@@ -55,7 +55,7 @@ Este proyecto explora las capacidades de visión artificial del GamePad de Wii U
 * [ ] **Storage:** Guardar capturas de pantalla en la tarjeta SD.
 
 ## 👨‍💻 Author / Autor
-**Claudio** - *Estudiante de Ingeniería Mecatrónica @ UTEC*
+**ClaudiWolf2056**
 
 ## 📄 License / Licencia
 MIT License - see the [LICENSE](LICENSE) file for details.
