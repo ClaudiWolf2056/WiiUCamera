@@ -1,6 +1,6 @@
-# 📷 WiiUCamera (WIP)
+# 📷 WiiUCamera (Homebrew WiiU App)
 
-[English description below]
+**WiiUCamera** is a native homebrew application for the **Nintendo Wii U** that allows access to and processing of the GamePad camera's video signal. It was developed from scratch in C++ using the WUT (Wii U Tools) toolchain.
 
 **WiiUCamera** es una aplicación nativa de homebrew para la **Nintendo Wii U** que permite acceder y procesar la señal de video de la cámara del GamePad. Desarrollada desde cero en C++ utilizando el toolchain WUT (Wii U Tools).
 
