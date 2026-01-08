@@ -2,18 +2,40 @@
 #define CAMARA_H
 
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_thread.h>
+#include <SDL2/SDL_ttf.h> 
 #include <camera/camera.h>
 #include <vpad/input.h>
+#include <proc_ui/procui.h>
+#include <coreinit/cache.h> // <--- IMPORTANTE: Para arreglar la corrupción
 #include <malloc.h>
 #include <unistd.h>
 #include <string.h>
 #include <time.h>
 #include <sys/stat.h> 
+#include <math.h> 
 
+// --- CONFIGURACIÓN ORIGINAL ---
 #define CAM_ANCHO_REAL 640
 #define CAM_ALTO       480
 #define CAM_PITCH      768 
 #define CLAMP(x) (((x) > 255) ? 255 : (((x) < 0) ? 0 : (x)))
+
+struct DatosGuardado {
+    uint32_t* bufferPixeles;
+    int ancho;
+    int alto;
+};
+
+struct ContextoCamara {
+    CAMHandle handle;
+    void* workMem;
+    uint8_t* rawBuffer;
+    uint32_t* cleanBuffer;
+    CAMSurface surface;
+    bool exito;
+    SDL_Texture* textura;
+};
 
 static volatile bool frameListo = false;
 
@@ -21,182 +43,212 @@ static void MiCallbackDeCamara(CAMEventData *evento) {
     if (evento->eventType == CAMERA_DECODE_DONE) frameListo = true;
 }
 
-// --- GUARDADO SEGURO (USANDO RAM, NO TEXTURA) ---
-void GuardarFotoEnSD(uint32_t* pixelesRGBA) {
-    // 1. Carpeta Maestra
+int HiloGuardarFoto(void* data) {
+    DatosGuardado* datos = (DatosGuardado*)data;
     const char* rutaCarpeta = "fs:/vol/external01/WiiUCamera Files";
-    
-    // Esto es seguro: Si la carpeta ya existe, mkdir simplemente devuelve -1 y sigue.
-    // No borra nada ni crea duplicados.
     mkdir(rutaCarpeta, 0777);
 
-    // 2. Nombre Único
     time_t t = time(NULL);
     char nombreArchivo[256];
     sprintf(nombreArchivo, "%s/Foto_%ld.bmp", rutaCarpeta, (long)t);
 
-    // 3. Crear Superficie directamente desde los datos crudos (Mucho más estable)
-    //    Usamos el buffer 'imagenLimpia' que ya tiene los colores correctos.
+    // SDL Masks para Big Endian (Wii U)
     SDL_Surface* surfaceFoto = SDL_CreateRGBSurfaceFrom(
-        pixelesRGBA, 
-        CAM_ANCHO_REAL, CAM_ALTO, 
-        32, // Profundidad (32 bits)
-        CAM_ANCHO_REAL * 4, // Pitch (Ancho * 4 bytes por pixel)
-        0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF // Máscaras RGBA
+        datos->bufferPixeles, datos->ancho, datos->alto, 32, datos->ancho * 4,
+        0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF
     );
 
     if (surfaceFoto) {
         SDL_SaveBMP(surfaceFoto, nombreArchivo);
         SDL_FreeSurface(surfaceFoto);
     }
+
+    free(datos->bufferPixeles);
+    free(datos); 
+    return 0; 
 }
 
-// --- DIBUJAR BOTÓN ---
-void DibujarInterfazFoto(SDL_Renderer* renderer, bool disparando) {
-    SDL_Rect btnRect = { 1080, 320, 80, 80 }; 
-    if (disparando) SDL_SetRenderDrawColor(renderer, 255, 50, 50, 255);
-    else            SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-    SDL_RenderFillRect(renderer, &btnRect);
-    
-    SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
-    SDL_Rect borde = { 1075, 315, 90, 90 };
-    SDL_RenderDrawRect(renderer, &borde);
-    
-    SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);
-    SDL_Rect lente = { 1100, 340, 40, 40 };
-    SDL_RenderFillRect(renderer, &lente);
+void LlenarCirculo(SDL_Renderer *renderer, int cx, int cy, int radius) {
+    for (int dy = -radius; dy <= radius; dy++) {
+        int dx = (int)sqrt(radius*radius - dy*dy);
+        SDL_RenderDrawLine(renderer, cx - dx, cy + dy, cx + dx, cy + dy);
+    }
 }
 
-int EjecutarCamara(SDL_Renderer* renderer) {
-    // SETUP
-    CAMSetupInfo setupInfo;
+void DibujarTextoEnCaja(SDL_Renderer* renderer, TTF_Font* font, const char* texto, int y, int x_inicio, int ancho_caja) {
+    if (!font) return;
+    SDL_Color blanco = {255, 255, 255, 255};
+    SDL_Surface* surface = TTF_RenderText_Blended(font, texto, blanco);
+    if (surface) {
+        SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+        int x_centrado = x_inicio + (ancho_caja - surface->w) / 2;
+        SDL_Rect rect = { x_centrado, y, surface->w, surface->h };
+        SDL_RenderCopy(renderer, texture, NULL, &rect);
+        SDL_FreeSurface(surface);
+        SDL_DestroyTexture(texture);
+    }
+}
+
+ContextoCamara IniciarCamaraContexto(SDL_Renderer* renderer) {
+    ContextoCamara ctx;
+    memset(&ctx, 0, sizeof(ContextoCamara));
+    
     CAMError error = CAMERA_ERROR_UNINITIALIZED;
-    CAMHandle camHandle = 0;
-    bool exito = false;
-    void* workMemPtr = NULL;
-    VPADStatus vpad_data;
-    VPADReadError vpad_error;
     CAMStreamInfo streamInfo;
-    
     streamInfo.type = CAMERA_STREAM_TYPE_1;
     streamInfo.width = CAM_ANCHO_REAL;
     streamInfo.height = CAM_ALTO;
 
     int workMemSize = CAMGetMemReq(&streamInfo);
-    workMemPtr = memalign(256, workMemSize); 
-    if (workMemPtr) memset(workMemPtr, 0, workMemSize);
+    ctx.workMem = memalign(256, workMemSize);
+    if(ctx.workMem) memset(ctx.workMem, 0, workMemSize);
 
+    CAMSetupInfo setupInfo;
     memset(&setupInfo, 0, sizeof(CAMSetupInfo));
     setupInfo.streamInfo = streamInfo;
-    setupInfo.workMem.pMem = workMemPtr;
+    setupInfo.workMem.pMem = ctx.workMem;
     setupInfo.workMem.size = workMemSize;
-    setupInfo.eventHandler = MiCallbackDeCamara; 
+    setupInfo.eventHandler = MiCallbackDeCamara;
     setupInfo.mode.fps = CAMERA_FPS_30;
 
-    camHandle = CAMInit(0, &setupInfo, &error);
-    if (error == CAMERA_ERROR_OK) { exito = true; CAMOpen(camHandle); } 
-    else { if(workMemPtr) free(workMemPtr); return 0; }
+    ctx.handle = CAMInit(0, &setupInfo, &error);
+    if (error == CAMERA_ERROR_OK) {
+        ctx.exito = true;
+        CAMOpen(ctx.handle);
+        ctx.rawBuffer = (uint8_t*)memalign(256, CAMERA_YUV_BUFFER_SIZE);
+        ctx.cleanBuffer = (uint32_t*)memalign(256, CAM_ANCHO_REAL * CAM_ALTO * 4);
+        memset(&ctx.surface, 0, sizeof(CAMSurface));
+        ctx.surface.width = CAM_ANCHO_REAL;
+        ctx.surface.height = CAM_ALTO;
+        ctx.surface.pitch = CAM_PITCH;
+        ctx.surface.alignment = CAMERA_YUV_BUFFER_ALIGNMENT;
+        ctx.surface.surfaceSize = CAMERA_YUV_BUFFER_SIZE;
+        ctx.surface.surfaceBuffer = ctx.rawBuffer;
+        CAMSubmitTargetSurface(ctx.handle, &ctx.surface);
+        ctx.textura = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, CAM_ANCHO_REAL, CAM_ALTO);
+    } else {
+        if(ctx.workMem) free(ctx.workMem);
+        ctx.exito = false;
+    }
+    return ctx;
+}
 
-    uint8_t* imagenRaw = (uint8_t*)memalign(256, CAMERA_YUV_BUFFER_SIZE);
-    uint32_t* imagenLimpia = (uint32_t*)memalign(256, CAM_ANCHO_REAL * CAM_ALTO * 4);
+void CerrarCamaraContexto(ContextoCamara* ctx) {
+    if (ctx->exito) { CAMClose(ctx->handle); CAMExit(ctx->handle); }
+    if (ctx->textura) SDL_DestroyTexture(ctx->textura);
+    if (ctx->rawBuffer) free(ctx->rawBuffer);
+    if (ctx->cleanBuffer) free(ctx->cleanBuffer);
+    if (ctx->workMem) free(ctx->workMem);
+    ctx->exito = false;
+}
+
+void DibujarInterfazFoto(SDL_Renderer* renderer, bool disparando, TTF_Font* font, bool esIngles) {
+    int cx = 1120; int cy = 360; int radio = 45;
+    if (disparando) SDL_SetRenderDrawColor(renderer, 255, 50, 50, 255);
+    else            SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    LlenarCirculo(renderer, cx, cy, radio);
+    SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
+
+    if (esIngles) {
+        DibujarTextoEnCaja(renderer, font, "Press A / L / R", 50, 960, 320);
+        DibujarTextoEnCaja(renderer, font, "to take photo", 85, 960, 320);
+        DibujarTextoEnCaja(renderer, font, "Press B to exit", 650, 960, 320);
+    } else {
+        DibujarTextoEnCaja(renderer, font, "Presiona A / L / R", 50, 960, 320);
+        DibujarTextoEnCaja(renderer, font, "para tomar foto", 85, 960, 320);
+        DibujarTextoEnCaja(renderer, font, "Presiona B para salir", 650, 960, 320);
+    }
+}
+
+int EjecutarCamara(SDL_Renderer* renderer, TTF_Font* font, bool esIngles) {
+    ContextoCamara ctx = IniciarCamaraContexto(renderer);
     
-    CAMSurface superficie;
-    memset(&superficie, 0, sizeof(CAMSurface));
-    superficie.width = CAM_ANCHO_REAL;
-    superficie.height = CAM_ALTO;
-    superficie.pitch = CAM_PITCH;
-    superficie.alignment = CAMERA_YUV_BUFFER_ALIGNMENT;
-    superficie.surfaceSize = CAMERA_YUV_BUFFER_SIZE;
-    superficie.surfaceBuffer = imagenRaw;
-    CAMSubmitTargetSurface(camHandle, &superficie);
-
-    SDL_Texture* textura = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, CAM_ANCHO_REAL, CAM_ALTO);
     SDL_Rect destinoRect = {0, 0, 960, 720}; 
-    
     int offsetUV = CAM_PITCH * CAM_ALTO;
     bool enCamara = true;
     int resultado = 0; 
     frameListo = false;
     
     int delayFoto = 0;
-    int timerFlash = 0; // NUEVO: Contador para el efecto blanco
+    int framesFlash = 0;
 
     while (enCamara) {
-        SDL_PumpEvents(); 
-        VPADRead(VPAD_CHAN_0, &vpad_data, 1, &vpad_error);
+        ProcUIStatus status = ProcUISubProcessMessages(true);
         
-        if (delayFoto > 0) delayFoto--;
-        if (timerFlash > 0) timerFlash--; // Reducir tiempo del flash
+        if (status == PROCUI_STATUS_EXITING) { enCamara = false; resultado = -1; }
+        else if (status == PROCUI_STATUS_RELEASE_FOREGROUND) {
+            CerrarCamaraContexto(&ctx);
+            ProcUIDrawDoneRelease(); 
+        }
+        else {
+            if (!ctx.exito) { ctx = IniciarCamaraContexto(renderer); frameListo = false; }
 
-        if (vpad_data.trigger & VPAD_BUTTON_B) { enCamara = false; resultado = 1; }
-        if (vpad_data.trigger & VPAD_BUTTON_HOME) { enCamara = false; resultado = -1; }
+            VPADStatus vpad; VPADReadError err;
+            VPADRead(VPAD_CHAN_0, &vpad, 1, &err);
+            if (delayFoto > 0) delayFoto--;
+            if (framesFlash > 0) framesFlash--;
 
-        if (exito && frameListo) {
-            DCInvalidateRange(imagenRaw, CAMERA_YUV_BUFFER_SIZE);
-            for (int y = 0; y < CAM_ALTO; y += 2) {
-                int filaY1 = y * CAM_PITCH; int filaY2 = (y + 1) * CAM_PITCH;
-                int filaOut1 = y * CAM_ANCHO_REAL; int filaOut2 = (y + 1) * CAM_ANCHO_REAL;
-                int filaUV = offsetUV + ((y / 2) * CAM_PITCH);
+            if (vpad.trigger & VPAD_BUTTON_B) { enCamara = false; resultado = 1; }
 
-                for (int x = 0; x < CAM_ANCHO_REAL; x += 2) {
-                    int idxUV = filaUV + x;
-                    int u = imagenRaw[idxUV] - 128; int v = imagenRaw[idxUV + 1] - 128;
-                    int cR = (351 * v) >> 8; int cG = ((86 * u) + (179 * v)) >> 8; int cB = (444 * u) >> 8;
-                    auto pixel = [&](int y_val) { 
-                        return (CLAMP(y_val + cR) << 24) | (CLAMP(y_val - cG) << 16) | (CLAMP(y_val + cB) << 8) | 0xFF; 
-                    };
-                    imagenLimpia[filaOut1 + x] = pixel(imagenRaw[filaY1 + x]);
-                    imagenLimpia[filaOut1 + x + 1] = pixel(imagenRaw[filaY1 + x + 1]);
-                    imagenLimpia[filaOut2 + x] = pixel(imagenRaw[filaY2 + x]);
-                    imagenLimpia[filaOut2 + x + 1] = pixel(imagenRaw[filaY2 + x + 1]);
+            if (ctx.exito && frameListo) {
+                DCInvalidateRange(ctx.rawBuffer, CAMERA_YUV_BUFFER_SIZE);
+                for (int y = 0; y < CAM_ALTO; y += 2) {
+                    int fY1=y*CAM_PITCH, fY2=(y+1)*CAM_PITCH, fOut1=y*CAM_ANCHO_REAL, fOut2=(y+1)*CAM_ANCHO_REAL;
+                    int fUV = offsetUV + ((y/2)*CAM_PITCH);
+                    for (int x = 0; x < CAM_ANCHO_REAL; x += 2) {
+                        int idx=fUV+x, u=ctx.rawBuffer[idx]-128, v=ctx.rawBuffer[idx+1]-128;
+                        int cR=(351*v)>>8, cG=((86*u)+(179*v))>>8, cB=(444*u)>>8;
+                        auto p = [&](int yv){ return (CLAMP(yv+cR)<<24)|(CLAMP(yv-cG)<<16)|(CLAMP(yv+cB)<<8)|0xFF; };
+                        ctx.cleanBuffer[fOut1+x] = p(ctx.rawBuffer[fY1+x]); ctx.cleanBuffer[fOut1+x+1] = p(ctx.rawBuffer[fY1+x+1]);
+                        ctx.cleanBuffer[fOut2+x] = p(ctx.rawBuffer[fY2+x]); ctx.cleanBuffer[fOut2+x+1] = p(ctx.rawBuffer[fY2+x+1]);
+                    }
+                }
+                SDL_UpdateTexture(ctx.textura, NULL, ctx.cleanBuffer, CAM_ANCHO_REAL * 4);
+                frameListo = false;
+                CAMSubmitTargetSurface(ctx.handle, &ctx.surface);
+            }
+
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+            SDL_RenderClear(renderer);
+            if (ctx.textura) SDL_RenderCopy(renderer, ctx.textura, NULL, &destinoRect);
+            
+            bool disparo = (vpad.trigger & VPAD_BUTTON_L) || (vpad.trigger & VPAD_BUTTON_R) || (vpad.trigger & VPAD_BUTTON_A);
+            
+            DibujarInterfazFoto(renderer, disparo, font, esIngles);
+
+            if (framesFlash > 0) {
+                int alpha = (framesFlash * 255) / 10; 
+                SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+                SDL_SetRenderDrawColor(renderer, 255, 255, 255, alpha);
+                SDL_RenderFillRect(renderer, NULL); 
+                SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+            }
+
+            if (disparo && delayFoto == 0) {
+                DatosGuardado* datos = (DatosGuardado*)malloc(sizeof(DatosGuardado));
+                if (datos) {
+                    datos->ancho = CAM_ANCHO_REAL;
+                    datos->alto = CAM_ALTO;
+                    size_t tamano = CAM_ANCHO_REAL * CAM_ALTO * 4;
+                    datos->bufferPixeles = (uint32_t*)memalign(256, tamano);
+                    if (datos->bufferPixeles) {
+                        memcpy(datos->bufferPixeles, ctx.cleanBuffer, tamano);
+                        
+                        // --- LA CURA MÁGICA ---
+                        // Forzamos a la CPU a guardar los datos en RAM para que el hilo los lea bien
+                        DCStoreRange(datos->bufferPixeles, tamano);
+                        
+                        SDL_Thread* hilo = SDL_CreateThread(HiloGuardarFoto, "GuardarFoto", datos);
+                        SDL_DetachThread(hilo); 
+                        framesFlash = 10; 
+                        delayFoto = 30;   
+                    } else { free(datos); }
                 }
             }
-            SDL_UpdateTexture(textura, NULL, imagenLimpia, CAM_ANCHO_REAL * 4);
-            frameListo = false;
-            CAMSubmitTargetSurface(camHandle, &superficie);
+            SDL_RenderPresent(renderer);
         }
-
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-        SDL_RenderClear(renderer);
-        
-        // Dibujar Cámara
-        SDL_RenderCopy(renderer, textura, NULL, &destinoRect);
-        
-        // Dibujar UI (Botón)
-        bool presionoDisparador = (vpad_data.trigger & VPAD_BUTTON_L) || 
-                                  (vpad_data.trigger & VPAD_BUTTON_R) || 
-                                  (vpad_data.trigger & VPAD_BUTTON_A);
-
-        DibujarInterfazFoto(renderer, presionoDisparador);
-        
-        // --- LÓGICA DE FOTO Y FLASH ---
-        if (presionoDisparador && delayFoto == 0) {
-            // 1. Guardar la imagen (Usando buffer de RAM, sin bloqueos)
-            GuardarFotoEnSD(imagenLimpia);
-            
-            // 2. Activar Flash
-            timerFlash = 10; // Durará 10 cuadros (aprox 0.2 segundos)
-            
-            // 3. Delay para no tomar 100 fotos
-            delayFoto = 60;
-        }
-
-        // --- DIBUJAR EL EFECTO FLASH ---
-        if (timerFlash > 0) {
-            // Rectángulo blanco gigante
-            SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-            SDL_Rect flashRect = {0, 0, 1280, 720};
-            SDL_RenderFillRect(renderer, &flashRect);
-        }
-
-        SDL_RenderPresent(renderer);
     }
-
-    if (exito) { CAMClose(camHandle); CAMExit(camHandle); }
-    if (textura) SDL_DestroyTexture(textura);
-    if (imagenRaw) free(imagenRaw);
-    if (imagenLimpia) free(imagenLimpia);
-    if (workMemPtr) free(workMemPtr);
+    CerrarCamaraContexto(&ctx);
     return resultado;
 }
 
