@@ -7,9 +7,12 @@
 #include <unistd.h>
 #include <vector>
 #include <string>
-#include "camara.h" 
 
-const char* APP_VERSION = "v0.8.1 Visual Fixes";
+// INCLUIMOS NUESTROS MODULOS
+#include "camara.h" 
+#include "recorder.h" // <--- ¡NUEVO! Para el video AVI
+
+const char* APP_VERSION = "v0.9.0 Video Beta";
 
 enum EstadoApp {
     ESTADO_MENU_PRINCIPAL,
@@ -105,7 +108,6 @@ void DibujarBotonCentrado(SDL_Renderer* renderer, SDL_Texture* texturaBoton, int
 }
 
 int main(int argc, char **argv) {
-    // SDL inicia ProcUI internamente
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO); 
     TTF_Init();
     IMG_Init(IMG_INIT_PNG);
@@ -114,9 +116,7 @@ int main(int argc, char **argv) {
     IniciarAudio();
 
     SDL_Window *window = SDL_CreateWindow("WiiUCamera", 0, 0, 1280, 720, 0);
-    
-    // AQUÍ ESTÁ EL ARREGLO DE LAS RAYAS: "SDL_RENDERER_PRESENTVSYNC"
-    // Esto sincroniza el dibujo con la pantalla para evitar cortes o parpadeos negros.
+    // VSync Activado para evitar rayas
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
     TTF_Font* fuenteGrande = TTF_OpenFont("/vol/content/font.ttf", 64);
@@ -149,15 +149,12 @@ int main(int argc, char **argv) {
     int touchX = -100, touchY = -100;
     bool dedoPresionado = false;
 
-    // --- BUCLE MEJORADO (SDL EVENT LOOP) ---
-    // Esto maneja HOME, POWER y TÁCTIL automáticamente
     while (appRunning) {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) {
                 appRunning = false;
             }
-            // Eventos Táctiles
             else if (event.type == SDL_MOUSEMOTION) {
                 touchX = event.motion.x;
                 touchY = event.motion.y;
@@ -208,7 +205,6 @@ int main(int argc, char **argv) {
             for (int i = 0; i < 4; i++) {
                 DibujarBotonCentrado(renderer, lista[i], centrosX[i], centrosY[i], (i == seleccion), &btnRects[i]);
                 
-                // LÓGICA TÁCTIL
                 if (dedoPresionado && VerificarToqueBoton(touchX, touchY, btnRects[i].x, btnRects[i].y, btnRects[i].w, btnRects[i].h)) {
                     if (seleccion != i) { seleccion = i; ReproducirSonidoMover(); }
                     
@@ -243,6 +239,7 @@ int main(int argc, char **argv) {
 
         } else if (estado == ESTADO_SUBMENU_MODOS) {
             DibujarTextoCentrado(renderer, fuenteGrande, esIngles ? "Camera Mode" : "Modo de Camara", 120, colorBlanco);
+            // 0: Fotos Normal, 1: Video Beta, 2: Efectos, 3: Pronto
             const char* opEN[] = { "Take photo (normal)", "Record video (Beta)", "Take photo (effects)", "Soon..." };
             const char* opES[] = { "Tomar foto (normal)", "Grabar video (Beta)", "Tomar foto (efectos)", "Pronto..." };
             
@@ -286,17 +283,28 @@ int main(int argc, char **argv) {
 
         } else if (estado == ESTADO_CAMARA) {
             Mix_PauseMusic(); 
-            dedoPresionado = false;
-            int res = EjecutarCamara(renderer, fuenteMini, esIngles);
+            dedoPresionado = false; // Reset táctil al entrar
+            
+            int res = 0;
+            
+            // --- DECISIÓN: ¿FOTO O VIDEO? ---
+            if (seleccion == 1) { 
+                // Opción 1 del menú es "Grabar video"
+                res = EjecutarGrabadora(renderer, fuenteMini, esIngles);
+            } else {
+                // Opción 0, 2 o 3 por ahora van a la Cámara de Fotos normal
+                res = EjecutarCamara(renderer, fuenteMini, esIngles);
+            }
+
             Mix_ResumeMusic(); 
-            SDL_RenderClear(renderer); // Limpieza extra al volver
+            SDL_RenderClear(renderer); 
             SDL_RenderPresent(renderer); 
+            
             if (res == 1) estado = ESTADO_SUBMENU_MODOS; 
             else if (res == -1) appRunning = false; 
             delayInput = 30;
         }
 
-        // DEBUG TÁCTIL (Verás el cuadro rojo si tocas)
         if (dedoPresionado) DibujarCursorTactil(renderer, touchX, touchY);
 
         SDL_RenderPresent(renderer);
