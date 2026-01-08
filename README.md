@@ -1,4 +1,4 @@
-# Wii U Camera App 📸
+# WiiUCamera 📸
 
 [English](#english) | [Español](#español)
 
