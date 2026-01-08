@@ -7,23 +7,27 @@
 <a name="english"></a>
 ## 🇬🇧 English
 
-A Homebrew application for Nintendo Wii U that turns the GamePad into a photo camera and (coming soon) video recorder.
+A Homebrew application for Nintendo Wii U that turns the GamePad into a photo camera and **video recorder (AVI)**.
 
-### 🚀 What's New in v0.8.1 (Visual Fixes)
-This release is a major leap in stability and aesthetics.
+### 🚀 What's New in v0.9.5 (Video Update)
+We achieved the impossible! Video recording is now functional.
 
-* **✅ Home Button Fix:** The app no longer freezes when exiting and returning from the Home Menu.
-* **✅ Audio & SFX:** Relaxing background music and sound effects when navigating menus.
-* **✅ Smooth Graphics (VSync):** Fixed horizontal tearing and black flickering lines.
-* **✅ Touch Support (Beta):** You can now tap the screen to select options (includes a red visual pointer).
-* **✅ Exit Fix:** The console no longer hangs when closing the application.
+* **🎥 AVI Video Recording:** You can now record short clips (approx. 3.5 seconds).
+* **✨ Color & Orientation Fix:** Videos are saved with correct colors (BGRA fix) and correct orientation.
+* **📂 PC Compatible:** The `.avi` files work perfectly in VLC Media Player on Windows/Linux.
+* **🖥️ UI Improvements:** Better text placement and recording indicators.
+* **✅ Stability:** Fixed crashes when saving large files to the SD card.
+
+### ⚠️ Important Notes regarding Video
+* **File Size:** Video is uncompressed (High Quality). A 3.5s clip is around **115 MB**.
+* **Processing Time:** When you stop recording, **please wait**. The console needs a few seconds to write the RAM buffer to the SD card.
+* **Duration:** Currently limited to 100 frames (~3.5 seconds) to prevent RAM overflow.
 
 ### 🎮 Controls
 * **D-Pad / Left Stick:** Navigate menu.
-* **A Button:** Select / Take photo.
-* **B Button:** Back / Exit.
-* **Touch Screen:** Select options.
-* **Triggers (L/R):** Take photo.
+* **A Button:** Select / Record Video / Take Photo.
+* **B Button:** Back / Exit / Stop Recording.
+* **Touch Screen:** Select options (Beta).
 
 ### 🛠️ Installation
 1.  Download the latest `.wuhb` file from Releases.
@@ -35,23 +39,27 @@ This release is a major leap in stability and aesthetics.
 <a name="español"></a>
 ## 🇪🇸 Español
 
-Una aplicación Homebrew para Nintendo Wii U que permite usar el GamePad como cámara de fotos y (próximamente) grabadora de video.
+Una aplicación Homebrew para Nintendo Wii U que permite usar el GamePad como cámara de fotos y **grabadora de video (AVI)**.
 
-### 🚀 Novedades v0.8.1 (Visual Fixes)
-Esta versión es un gran salto en estabilidad y estética.
+### 🚀 Novedades v0.9.5 (Actualización de Video)
+¡Logramos lo imposible! La grabación de video ya es funcional.
 
-* **✅ Corrección del Botón Home:** La aplicación ya no se congela al salir y volver del menú Home.
-* **✅ Audio y SFX:** Música de fondo relajante y efectos de sonido al navegar por el menú.
-* **✅ Gráficos Suaves (VSync):** Se eliminaron las rayas horizontales (tearing) y parpadeos negros.
-* **✅ Soporte Táctil (Beta):** Ahora puedes tocar la pantalla para seleccionar opciones (incluye puntero visual rojo).
-* **✅ Corrección de Salida:** La consola ya no se cuelga al cerrar la aplicación.
+* **🎥 Grabación de Video AVI:** Ahora puedes grabar clips cortos (aprox 3.5 segundos).
+* **✨ Corrección de Color y Orientación:** Los videos se guardan con los colores reales (Fix BGRA) y derechos.
+* **📂 Compatible con PC:** Los archivos `.avi` funcionan perfectamente en VLC Media Player en Windows/Linux.
+* **🖥️ Mejoras de Interfaz:** Textos mejor ubicados e indicadores de grabación (REC).
+* **✅ Estabilidad:** Se arreglaron los cuelgues al guardar archivos grandes en la SD.
+
+### ⚠️ Notas Importantes sobre el Video
+* **Peso del Archivo:** El video es sin compresión (Alta Calidad). Un clip de 3.5s pesa unos **115 MB**.
+* **Tiempo de Procesado:** Al detener la grabación, **por favor espera**. La consola necesita unos segundos para pasar los datos de la RAM a la SD.
+* **Duración:** Limitado actualmente a 100 frames (~3.5 segundos) para no saturar la memoria RAM.
 
 ### 🎮 Controles
 * **D-Pad / Stick Izquierdo:** Navegar por el menú.
-* **Botón A:** Seleccionar / Tomar foto.
-* **Botón B:** Atrás / Salir.
-* **Pantalla Táctil:** Seleccionar opciones.
-* **Gatillos (L/R):** Tomar foto.
+* **Botón A:** Seleccionar / Grabar Video / Tomar Foto.
+* **Botón B:** Atrás / Salir / Detener Grabación.
+* **Pantalla Táctil:** Seleccionar opciones (Beta).
 
 ### 🛠️ Instalación
 1.  Descarga el archivo `.wuhb` más reciente.
