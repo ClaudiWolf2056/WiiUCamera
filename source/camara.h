@@ -7,7 +7,7 @@
 #include <camera/camera.h>
 #include <vpad/input.h>
 #include <proc_ui/procui.h>
-#include <coreinit/cache.h> // <--- IMPORTANTE: Para arreglar la corrupción
+#include <coreinit/cache.h> 
 #include <malloc.h>
 #include <unistd.h>
 #include <string.h>
@@ -15,7 +15,7 @@
 #include <sys/stat.h> 
 #include <math.h> 
 
-// --- CONFIGURACIÓN ORIGINAL ---
+
 #define CAM_ANCHO_REAL 640
 #define CAM_ALTO       480
 #define CAM_PITCH      768 
@@ -234,8 +234,7 @@ int EjecutarCamara(SDL_Renderer* renderer, TTF_Font* font, bool esIngles) {
                     if (datos->bufferPixeles) {
                         memcpy(datos->bufferPixeles, ctx.cleanBuffer, tamano);
                         
-                        // --- LA CURA MÁGICA ---
-                        // Forzamos a la CPU a guardar los datos en RAM para que el hilo los lea bien
+
                         DCStoreRange(datos->bufferPixeles, tamano);
                         
                         SDL_Thread* hilo = SDL_CreateThread(HiloGuardarFoto, "GuardarFoto", datos);
@@ -251,5 +250,6 @@ int EjecutarCamara(SDL_Renderer* renderer, TTF_Font* font, bool esIngles) {
     CerrarCamaraContexto(&ctx);
     return resultado;
 }
+
 
 #endif
