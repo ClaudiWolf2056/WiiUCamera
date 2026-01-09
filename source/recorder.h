@@ -16,7 +16,7 @@
 #define REC_ANCHO 640
 #define REC_ALTO  480
 #define REC_PITCH 768 
-#define MAX_FRAMES 120 // 4 Segundos
+#define MAX_FRAMES 120 // ~4 Segundos
 
 struct VideoManager {
     uint32_t* granBufferRAM; 
@@ -51,28 +51,24 @@ void EscribirShortLE(FILE* f, uint16_t valor) {
 }
 void Escribir4Chars(FILE* f, const char* s) { fwrite(s, 1, 4, f); }
 
-// --- CABECERA ANTIGUA (LA QUE FUNCIONABA) ---
-// Escribe todo de una vez al principio. Sin fseek.
+// Cabecera AVI Standard (Se escribe una sola vez al inicio)
 void EscribirCabeceraAVI(FILE* f, int frames, int ancho, int alto) {
     uint32_t frameSize = ancho * alto * 4;
-    // Tamaño de los datos: (Chunk Header 8 bytes + Frame Data) * frames
     uint32_t dataSize = (frameSize + 8) * frames; 
     uint32_t riffSize = dataSize + 220; 
 
     Escribir4Chars(f, "RIFF"); EscribirIntLE(f, riffSize); Escribir4Chars(f, "AVI ");
     Escribir4Chars(f, "LIST"); EscribirIntLE(f, 192);      Escribir4Chars(f, "hdrl");
     
-    // avih
     Escribir4Chars(f, "avih"); EscribirIntLE(f, 56);       
-    EscribirIntLE(f, 33333); // 30 FPS
-    EscribirIntLE(f, frameSize * 30); // Bytes/sec
+    EscribirIntLE(f, 33333); 
+    EscribirIntLE(f, frameSize * 30); 
     EscribirIntLE(f, 0); 
-    EscribirIntLE(f, 0x10); // Flags
+    EscribirIntLE(f, 0x10); 
     EscribirIntLE(f, frames); EscribirIntLE(f, 0); EscribirIntLE(f, 1); EscribirIntLE(f, frameSize);
     EscribirIntLE(f, ancho); EscribirIntLE(f, alto); 
     EscribirIntLE(f, 0); EscribirIntLE(f, 0); EscribirIntLE(f, 0); EscribirIntLE(f, 0); 
 
-    // vids
     Escribir4Chars(f, "LIST"); EscribirIntLE(f, 116);      Escribir4Chars(f, "strl");
     Escribir4Chars(f, "strh"); EscribirIntLE(f, 56);
     Escribir4Chars(f, "vids"); Escribir4Chars(f, "DIB ");
@@ -133,7 +129,11 @@ ContextoRecorder IniciarGrabadoraContexto(SDL_Renderer* renderer) {
 }
 
 void CerrarGrabadoraContexto(ContextoRecorder* ctx) {
-    if (ctx->exito) { CAMClose(ctx->handle); CAMExit(ctx->handle); }
+    if (ctx->exito) { 
+        // CAMStop ELIMINADO PORQUE NO EXISTE
+        CAMClose(ctx->handle); 
+        CAMExit(ctx->handle); 
+    }
     if (ctx->textura) SDL_DestroyTexture(ctx->textura);
     if (ctx->rawBuffer) free(ctx->rawBuffer);
     if (ctx->cleanBuffer) free(ctx->cleanBuffer);
@@ -149,7 +149,6 @@ void GuardarVideoAVI(SDL_Renderer* renderer, VideoManager* vm, TTF_Font* font) {
     char nombreArchivo[256];
     sprintf(nombreArchivo, "%s/Video_%ld.avi", rutaBase, (long)t);
 
-    // Pantalla de espera
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
     SDL_Color colorTexto = {255, 255, 0, 255};
@@ -162,31 +161,25 @@ void GuardarVideoAVI(SDL_Renderer* renderer, VideoManager* vm, TTF_Font* font) {
 
     FILE* f = fopen(nombreArchivo, "wb");
     if (f) {
-        // 1. ESCRIBIR CABECERA AL PRINCIPIO (ESTRATEGIA ANTIGUA SEGURA)
-        // Como ya sabemos cuántos frames capturamos, escribimos la cabecera correcta de una vez.
         EscribirCabeceraAVI(f, vm->framesCapturados, REC_ANCHO, REC_ALTO);
         
         uint32_t tamanoFrame = REC_ANCHO * REC_ALTO * 4;
-        
-        // 2. BUFFER DE ESCRITURA (ESTRATEGIA NUEVA RÁPIDA)
-        // Usamos malloc para crear un buffer temporal de 1 frame (1.2 MB)
-        // Esto evita el "cuelgue" por escribir píxel por píxel.
+        // OPTIMIZACIÓN: Buffer temporal para escritura rápida
         uint32_t* frameBuffer = (uint32_t*)malloc(tamanoFrame);
 
         if (frameBuffer) {
             for(int i=0; i < vm->framesCapturados; i++) {
-                 // Chunk Header
                  Escribir4Chars(f, "00db"); EscribirIntLE(f, tamanoFrame);
                  
                  uint32_t* ptrFrameStart = vm->granBufferRAM + (i * (REC_ANCHO * REC_ALTO));
                  
-                 // Llenamos el buffer en RAM (Súper rápido)
+                 // Procesamos en RAM
                  int idx = 0;
-                 for (int y = REC_ALTO - 1; y >= 0; y--) { // Fix Vertical
+                 for (int y = REC_ALTO - 1; y >= 0; y--) { 
                      uint32_t* ptrLinea = ptrFrameStart + (y * REC_ANCHO);
                      for (int x = 0; x < REC_ANCHO; x++) {
                          uint32_t pixelOriginal = ptrLinea[x];
-                         // Swap RGBA -> BGRA (Corrección Color)
+                         // Swap RGBA -> BGRA
                          uint32_t r = (pixelOriginal >> 24) & 0xFF;
                          uint32_t g = (pixelOriginal >> 16) & 0xFF;
                          uint32_t b = (pixelOriginal >> 8) & 0xFF;
@@ -195,12 +188,11 @@ void GuardarVideoAVI(SDL_Renderer* renderer, VideoManager* vm, TTF_Font* font) {
                          frameBuffer[idx++] = (b << 24) | (g << 16) | (r << 8) | a;
                      }
                  }
-                 // Escribimos 1.2MB de golpe a la SD (Rápido y seguro)
+                 // Escribimos todo de golpe
                  fwrite(frameBuffer, 1, tamanoFrame, f);
             }
             free(frameBuffer);
         }
-
         fflush(f);
         fclose(f);
     }
@@ -231,7 +223,7 @@ int EjecutarGrabadora(SDL_Renderer* renderer, TTF_Font* font, bool esIngles) {
     }
 
     SDL_Rect destinoRect = {0, 0, 960, 720}; 
-    int offsetUV = REC_PITCH * REC_ALTO; // Corregido
+    int offsetUV = REC_PITCH * REC_ALTO;
     bool enRecorder = true;
     recFrameListo = false;
     int resultado = 0;
@@ -283,7 +275,6 @@ int EjecutarGrabadora(SDL_Renderer* renderer, TTF_Font* font, bool esIngles) {
         SDL_RenderClear(renderer);
         if (ctx.textura) SDL_RenderCopy(renderer, ctx.textura, NULL, &destinoRect);
         
-        // INTERFAZ
         if (vm.grabando) {
             static int blink = 0; blink++;
             if ((blink / 10) % 2 == 0) {

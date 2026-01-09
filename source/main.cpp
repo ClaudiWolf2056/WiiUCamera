@@ -7,23 +7,24 @@
 #include <unistd.h>
 #include <vector>
 #include <string>
+#include <sys/stat.h>
 
-// --- MÓDULOS DE LA SUITE ---
 #include "camara.h" 
 #include "recorder.h" 
 #include "camera_effects.h" 
+#include "gallery.h" 
 
-const char* APP_VERSION = "v1.0.0 Release";
+const char* APP_VERSION = "v1.1.0 Gallery Update";
 
 enum EstadoApp {
     ESTADO_MENU_PRINCIPAL,
     ESTADO_SUBMENU_MODOS,
     ESTADO_UPDATES,
     ESTADO_AGRADECIMIENTOS,
-    ESTADO_CAMARA
+    ESTADO_CAMARA,
+    ESTADO_GALERIA 
 };
 
-// --- AUDIO ---
 Mix_Music* g_MusicaFondo = NULL;
 Mix_Chunk* g_SfxMove = NULL;
 Mix_Chunk* g_SfxSelect = NULL;
@@ -34,15 +35,12 @@ void IniciarAudio() {
     g_SfxMove = Mix_LoadWAV("/vol/content/move.wav");
     g_SfxSelect = Mix_LoadWAV("/vol/content/select.wav");
 
-    if (g_MusicaFondo) {
-        Mix_VolumeMusic(50); 
-        Mix_PlayMusic(g_MusicaFondo, -1); 
-    }
+    if (g_MusicaFondo) { Mix_VolumeMusic(50); Mix_PlayMusic(g_MusicaFondo, -1); }
     Mix_Volume(-1, 64); 
 }
 
 void CerrarAudio() {
-    Mix_HaltMusic(); 
+    if (Mix_PlayingMusic()) Mix_HaltMusic(); 
     Mix_HaltChannel(-1);
     if (g_SfxMove) Mix_FreeChunk(g_SfxMove);
     if (g_SfxSelect) Mix_FreeChunk(g_SfxSelect);
@@ -53,7 +51,6 @@ void CerrarAudio() {
 void ReproducirSonidoMover() { if (g_SfxMove) Mix_PlayChannel(-1, g_SfxMove, 0); }
 void ReproducirSonidoSelect() { if (g_SfxSelect) Mix_PlayChannel(-1, g_SfxSelect, 0); }
 
-// --- GRÁFICOS ---
 SDL_Texture* CargarTextura(SDL_Renderer* renderer, const std::string& ruta) {
     SDL_Surface* superficie = IMG_Load(ruta.c_str());
     if (!superficie) return nullptr;
@@ -74,7 +71,6 @@ void DibujarTextoCentrado(SDL_Renderer* renderer, TTF_Font* font, const char* te
     }
 }
 
-// Cursor táctil
 void DibujarCursorTactil(SDL_Renderer* renderer, int x, int y) {
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND); 
     SDL_SetRenderDrawColor(renderer, 255, 0, 0, 150); 
@@ -84,8 +80,7 @@ void DibujarCursorTactil(SDL_Renderer* renderer, int x, int y) {
 }
 
 bool VerificarToqueBoton(int touchX, int touchY, int btnX, int btnY, int btnW, int btnH) {
-    return (touchX >= btnX && touchX <= (btnX + btnW) &&
-            touchY >= btnY && touchY <= (btnY + btnH));
+    return (touchX >= btnX && touchX <= (btnX + btnW) && touchY >= btnY && touchY <= (btnY + btnH));
 }
 
 void DibujarBotonCentrado(SDL_Renderer* renderer, SDL_Texture* texturaBoton, int centroX, int centroY, bool seleccionado, SDL_Rect* outRect) {
@@ -95,9 +90,7 @@ void DibujarBotonCentrado(SDL_Renderer* renderer, SDL_Texture* texturaBoton, int
     int x = centroX - (w / 2);
     int y = centroY - (h / 2);
     if (outRect) { outRect->x = x; outRect->y = y; outRect->w = w; outRect->h = h; }
-
     SDL_Rect rectBoton = { x, y, w, h };
-
     if (seleccionado) {
         SDL_SetRenderDrawColor(renderer, 255, 230, 0, 255);
         int margen = 6;
@@ -109,14 +102,11 @@ void DibujarBotonCentrado(SDL_Renderer* renderer, SDL_Texture* texturaBoton, int
 
 int main(int argc, char **argv) {
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO); 
-    TTF_Init();
-    IMG_Init(IMG_INIT_PNG);
-    VPADInit(); 
-    
+    TTF_Init(); IMG_Init(IMG_INIT_PNG); VPADInit(); 
+    mkdir("fs:/vol/external01/WiiUCamera Files", 0777);
     IniciarAudio();
 
     SDL_Window *window = SDL_CreateWindow("WiiUCamera", 0, 0, 1280, 720, 0);
-    // VSync Activado para evitar rayas (Screen Tearing)
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
     TTF_Font* fuenteGrande = TTF_OpenFont("/vol/content/font.ttf", 64);
@@ -129,11 +119,13 @@ int main(int argc, char **argv) {
     SDL_Texture* texUpdates_ES = CargarTextura(renderer, "/vol/content/button_actualizaciones.png");
     SDL_Texture* texAgrade_ES = CargarTextura(renderer, "/vol/content/button_agradecimientos.png");
     SDL_Texture* texIdioma_ES  = CargarTextura(renderer, "/vol/content/button_idioma_es.png");
-    
+    SDL_Texture* texGaleria_ES = CargarTextura(renderer, "/vol/content/button_gallery.png"); 
+
     SDL_Texture* texIniciar_EN = CargarTextura(renderer, "/vol/content/button_iniciar_en.png");
     SDL_Texture* texUpdates_EN = CargarTextura(renderer, "/vol/content/button_updates_en.png"); 
     SDL_Texture* texAgrade_EN = CargarTextura(renderer, "/vol/content/button_agradecimientos_en.png");
     SDL_Texture* texIdioma_EN  = CargarTextura(renderer, "/vol/content/button_language_en.png");
+    SDL_Texture* texGaleria_EN = CargarTextura(renderer, "/vol/content/button_gallery_en.png"); 
 
     SDL_Color colorBlanco = {255, 255, 255, 255};
     SDL_Color colorAmarillo = {255, 255, 0, 255};
@@ -144,42 +136,28 @@ int main(int argc, char **argv) {
     bool esIngles = true;
     const int VELOCIDAD_CURSOR = 12;
     int delayInput = 0;
-    
-    SDL_Rect btnRects[4]; 
+    SDL_Rect btnRects[5]; 
     int touchX = -100, touchY = -100;
     bool dedoPresionado = false;
 
     while (appRunning) {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_QUIT) {
-                appRunning = false;
-            }
-            else if (event.type == SDL_MOUSEMOTION) {
-                touchX = event.motion.x;
-                touchY = event.motion.y;
-            }
-            else if (event.type == SDL_MOUSEBUTTONDOWN) {
-                dedoPresionado = true;
-                touchX = event.button.x;
-                touchY = event.button.y;
-            }
-            else if (event.type == SDL_MOUSEBUTTONUP) {
-                dedoPresionado = false;
-            }
+            if (event.type == SDL_QUIT) appRunning = false;
+            else if (event.type == SDL_MOUSEMOTION) { touchX = event.motion.x; touchY = event.motion.y; }
+            else if (event.type == SDL_MOUSEBUTTONDOWN) { dedoPresionado = true; touchX = event.button.x; touchY = event.button.y; }
+            else if (event.type == SDL_MOUSEBUTTONUP) { dedoPresionado = false; }
         }
 
         VPADStatus vpad; VPADReadError error;
         VPADRead(VPAD_CHAN_0, &vpad, 1, &error);
 
         SDL_RenderClear(renderer);
-        
         if (texBackground) SDL_RenderCopy(renderer, texBackground, NULL, NULL);
         else { SDL_SetRenderDrawColor(renderer, 0, 0, 100, 255); SDL_RenderClear(renderer); }
 
         if (delayInput > 0) delayInput--;
 
-        // Inputs Físicos
         float stickY = vpad.leftStick.y;
         bool moverAbajo = (vpad.hold & VPAD_BUTTON_DOWN) || (stickY < -0.5f);
         bool moverArriba = (vpad.hold & VPAD_BUTTON_UP) || (stickY > 0.5f);
@@ -193,147 +171,141 @@ int main(int argc, char **argv) {
             DibujarTextoCentrado(renderer, fuenteGrande, "WiiUCamera", 120, colorBlanco);
             DibujarTextoCentrado(renderer, fuenteMini, APP_VERSION, 680, colorBlanco);
 
-            SDL_Texture* btn1 = esIngles ? texIniciar_EN : texIniciar_ES;
-            SDL_Texture* btn2 = esIngles ? texUpdates_EN : texUpdates_ES;
-            SDL_Texture* btn3 = esIngles ? texAgrade_EN : texAgrade_ES;
-            SDL_Texture* btn4 = esIngles ? texIdioma_EN : texIdioma_ES;
-            SDL_Texture* lista[] = { btn1, btn2, btn3, btn4 };
+            SDL_Texture* bStart = esIngles ? texIniciar_EN : texIniciar_ES;
+            SDL_Texture* bGal = esIngles ? texGaleria_EN : texGaleria_ES;
+            SDL_Texture* bUpd = esIngles ? texUpdates_EN : texUpdates_ES;
+            SDL_Texture* bCred = esIngles ? texAgrade_EN : texAgrade_ES;
+            SDL_Texture* bLang = esIngles ? texIdioma_EN : texIdioma_ES;
+            SDL_Texture* lista[] = { bStart, bGal, bUpd, bCred, bLang };
             
-            int centrosX[] = { 480, 800, 480, 800 };
-            int centrosY[] = { 350, 350, 500, 500 };
+            int cX[] = { 640, 400, 880, 400, 880 };
+            int cY[] = { 300, 420, 420, 540, 540 };
 
-            for (int i = 0; i < 4; i++) {
-                DibujarBotonCentrado(renderer, lista[i], centrosX[i], centrosY[i], (i == seleccion), &btnRects[i]);
-                
+            for (int i = 0; i < 5; i++) {
+                DibujarBotonCentrado(renderer, lista[i], cX[i], cY[i], (i == seleccion), &btnRects[i]);
                 if (dedoPresionado && VerificarToqueBoton(touchX, touchY, btnRects[i].x, btnRects[i].y, btnRects[i].w, btnRects[i].h)) {
                     if (seleccion != i) { seleccion = i; ReproducirSonidoMover(); }
-                    
                     if (delayInput == 0) {
                         ReproducirSonidoSelect();
-                        if (seleccion == 0) { estado = ESTADO_SUBMENU_MODOS; seleccion = 0; }
-                        else if (seleccion == 1) { estado = ESTADO_UPDATES; }
-                        else if (seleccion == 2) { estado = ESTADO_AGRADECIMIENTOS; }
-                        else if (seleccion == 3) { esIngles = !esIngles; }
-                        dedoPresionado = false;
-                        delayInput = 20;
+                        if (seleccion == 0) estado = ESTADO_SUBMENU_MODOS;
+                        else if (seleccion == 1) estado = ESTADO_GALERIA;
+                        else if (seleccion == 2) estado = ESTADO_UPDATES;
+                        else if (seleccion == 3) estado = ESTADO_AGRADECIMIENTOS;
+                        else if (seleccion == 4) esIngles = !esIngles;
+                        dedoPresionado = false; delayInput = 20;
                     }
                 }
             }
 
             if (delayInput == 0) {
-                if (moverDer)   { if (seleccion == 0) seleccion=1; else if(seleccion==2) seleccion=3; delayInput=VELOCIDAD_CURSOR; huboMovimiento=true; }
-                if (moverIzq)   { if (seleccion == 1) seleccion=0; else if(seleccion==3) seleccion=2; delayInput=VELOCIDAD_CURSOR; huboMovimiento=true; }
-                if (moverAbajo) { if (seleccion == 0) seleccion=2; else if(seleccion==1) seleccion=3; delayInput=VELOCIDAD_CURSOR; huboMovimiento=true; }
-                if (moverArriba){ if (seleccion == 2) seleccion=0; else if(seleccion==3) seleccion=1; delayInput=VELOCIDAD_CURSOR; huboMovimiento=true; }
-                if (huboMovimiento) ReproducirSonidoMover();
+                if (moverAbajo) {
+                    if (seleccion == 0) seleccion = 1; else if (seleccion == 1) seleccion = 3; else if (seleccion == 2) seleccion = 4;
+                    delayInput = VELOCIDAD_CURSOR; huboMovimiento = true;
+                }
+                if (moverArriba) {
+                    if (seleccion == 3) seleccion = 1; else if (seleccion == 4) seleccion = 2; else if (seleccion == 1 || seleccion == 2) seleccion = 0;
+                    delayInput = VELOCIDAD_CURSOR; huboMovimiento = true;
+                }
+                if (moverDer) { if (seleccion == 1) seleccion = 2; else if (seleccion == 3) seleccion = 4; delayInput = VELOCIDAD_CURSOR; huboMovimiento = true; }
+                if (moverIzq) { if (seleccion == 2) seleccion = 1; else if (seleccion == 4) seleccion = 3; delayInput = VELOCIDAD_CURSOR; huboMovimiento = true; }
 
+                if (huboMovimiento) ReproducirSonidoMover();
                 if (botonA) {
                     ReproducirSonidoSelect();
-                    if (seleccion == 0) { estado = ESTADO_SUBMENU_MODOS; seleccion = 0; }
-                    else if (seleccion == 1) { estado = ESTADO_UPDATES; }
-                    else if (seleccion == 2) { estado = ESTADO_AGRADECIMIENTOS; }
-                    else if (seleccion == 3) { esIngles = !esIngles; }
+                    if (seleccion == 0) estado = ESTADO_SUBMENU_MODOS;
+                    else if (seleccion == 1) estado = ESTADO_GALERIA;
+                    else if (seleccion == 2) estado = ESTADO_UPDATES;
+                    else if (seleccion == 3) estado = ESTADO_AGRADECIMIENTOS;
+                    else if (seleccion == 4) esIngles = !esIngles;
+                    seleccion = 0; 
                     delayInput = 20;
                 }
             }
 
         } else if (estado == ESTADO_SUBMENU_MODOS) {
-            DibujarTextoCentrado(renderer, fuenteGrande, esIngles ? "Camera Mode" : "Modo de Camara", 120, colorBlanco);
-            
+            DibujarTextoCentrado(renderer, fuenteGrande, esIngles ? "Camera Mode" : "Modo de Camara", 100, colorBlanco); 
             const char* opEN[] = { "Take photo (normal)", "Record video (AVI)", "Effects (Filters)", "Soon..." };
             const char* opES[] = { "Tomar foto (normal)", "Grabar video (AVI)", "Efectos (Filtros)", "Pronto..." };
-            
             int startY = 300;
             for (int i = 0; i < 4; i++) {
                 SDL_Color col = (i == seleccion) ? colorAmarillo : colorBlanco;
                 int textoY = startY + (i * 70);
                 DibujarTextoCentrado(renderer, fuentePequena, esIngles ? opEN[i] : opES[i], textoY, col);
-
                 if (dedoPresionado && VerificarToqueBoton(touchX, touchY, (1280-600)/2, textoY, 600, 50)) {
                      if (seleccion != i) { seleccion = i; ReproducirSonidoMover(); }
-                     if (delayInput == 0) {
-                        ReproducirSonidoSelect();
-                        estado = ESTADO_CAMARA;
-                        dedoPresionado = false;
-                        delayInput = 30;
-                     }
+                     if (delayInput == 0) { ReproducirSonidoSelect(); estado = ESTADO_CAMARA; dedoPresionado = false; delayInput = 30; }
                 }
             }
-
             if (delayInput == 0) {
                 if (moverAbajo) { seleccion++; if (seleccion >= 4) seleccion = 0; delayInput = VELOCIDAD_CURSOR; huboMovimiento=true; }
                 if (moverArriba) { seleccion--; if (seleccion < 0) seleccion = 3; delayInput = VELOCIDAD_CURSOR; huboMovimiento=true; }
                 if (huboMovimiento) ReproducirSonidoMover();
-
                 if (botonB) { estado = ESTADO_MENU_PRINCIPAL; seleccion = 0; delayInput = 30; }
                 if (botonA) { ReproducirSonidoSelect(); estado = ESTADO_CAMARA; delayInput = 30; }
             }
 
         } else if (estado == ESTADO_UPDATES) {
-            // --- PANTALLA DE ACTUALIZACIONES ---
-            DibujarTextoCentrado(renderer, fuenteGrande, esIngles ? "Changelog" : "Novedades", 50, colorAmarillo);
-            
-            int startY = 160; int gap = 45; SDL_Color colTxt = colorBlanco;
+            DibujarTextoCentrado(renderer, fuenteGrande, esIngles ? "Changelog" : "Novedades", 110, colorAmarillo);
+            int startY = 220; int gap = 45; SDL_Color colTxt = colorBlanco;
             
             if (esIngles) {
-                DibujarTextoCentrado(renderer, fuentePequena, "v1.0.0 - The Release", startY, colTxt);
-                DibujarTextoCentrado(renderer, fuenteMini, "- NEW: AVI Video Recorder (Silent Mode)", startY + gap*1.5, colTxt);
-                DibujarTextoCentrado(renderer, fuenteMini, "- NEW: Photo Filters (GameBoy, Sepia, etc.)", startY + gap*2.5, colTxt);
-                DibujarTextoCentrado(renderer, fuenteMini, "- FIX: High Speed Saving (No freezing)", startY + gap*3.5, colTxt);
-                DibujarTextoCentrado(renderer, fuenteMini, "- FIX: Fixed visual glitches (VSync)", startY + gap*4.5, colTxt);
+                DibujarTextoCentrado(renderer, fuentePequena, "v1.1.0 - Gallery Update", startY, colTxt);
+                DibujarTextoCentrado(renderer, fuenteMini, "- NEW: Gallery Mode! View photos and videos", startY + gap*1.5, colTxt);
+                DibujarTextoCentrado(renderer, fuenteMini, "- FIX: Instant Photo Saving (No lag)", startY + gap*2.5, colTxt);
+                DibujarTextoCentrado(renderer, fuenteMini, "- FIX: Fixed infinite loading loop on exit", startY + gap*3.5, colTxt);
             } else {
-                DibujarTextoCentrado(renderer, fuentePequena, "v1.0.0 - Lanzamiento", startY, colTxt);
-                DibujarTextoCentrado(renderer, fuenteMini, "- NUEVO: Grabadora de Video AVI (Modo Silencio)", startY + gap*1.5, colTxt);
-                DibujarTextoCentrado(renderer, fuenteMini, "- NUEVO: Filtros (GameBoy, Sepia, etc.)", startY + gap*2.5, colTxt);
-                DibujarTextoCentrado(renderer, fuenteMini, "- FIX: Guardado Ultra-Rapido (Sin cuelgues)", startY + gap*3.5, colTxt);
-                DibujarTextoCentrado(renderer, fuenteMini, "- FIX: Arreglados fallos visuales (VSync)", startY + gap*4.5, colTxt);
+                DibujarTextoCentrado(renderer, fuentePequena, "v1.1.0 - Actualizacion Galeria", startY, colTxt);
+                DibujarTextoCentrado(renderer, fuenteMini, "- NUEVO: Modo Galeria! Ver fotos y videos", startY + gap*1.5, colTxt);
+                DibujarTextoCentrado(renderer, fuenteMini, "- FIX: Guardado de fotos instantaneo", startY + gap*2.5, colTxt);
+                DibujarTextoCentrado(renderer, fuenteMini, "- FIX: Arreglado bucle infinito al salir", startY + gap*3.5, colTxt);
             }
-
             DibujarTextoCentrado(renderer, fuentePequena, esIngles ? "(Press B to return)" : "(Presiona B para volver)", 600, colorAmarillo);
-            
-            if (botonB || (dedoPresionado && delayInput == 0)) { 
-                estado = ESTADO_MENU_PRINCIPAL; seleccion = 1; delayInput = 30; 
-            }
+            if (botonB) { estado = ESTADO_MENU_PRINCIPAL; delayInput = 30; }
 
         } else if (estado == ESTADO_AGRADECIMIENTOS) {
-            // --- PANTALLA DE CRÉDITOS ---
-            DibujarTextoCentrado(renderer, fuenteGrande, esIngles ? "Credits" : "Creditos", 50, colorAmarillo);
-
-            int startY = 200;
+            DibujarTextoCentrado(renderer, fuenteGrande, esIngles ? "Credits" : "Creditos", 110, colorAmarillo);
+            int startY = 280;
             DibujarTextoCentrado(renderer, fuentePequena, esIngles ? "Created by:" : "Creado por:", startY, colorBlanco);
             DibujarTextoCentrado(renderer, fuenteGrande, "ClaudiWolf2056", startY + 60, colorAmarillo);
-            
-            DibujarTextoCentrado(renderer, fuenteMini, esIngles ? "Powered by:" : "Usando tecnologia:", startY + 180, colorBlanco);
-            DibujarTextoCentrado(renderer, fuenteMini, "SDL2 for Wii U - DevkitPro - LibCamera", startY + 220, colorBlanco);
-
+            DibujarTextoCentrado(renderer, fuentePequena, esIngles ? "Soon..." : "Pronto...", startY + 180, {200, 200, 200, 255});
             DibujarTextoCentrado(renderer, fuentePequena, esIngles ? "(Press B to return)" : "(Presiona B para volver)", 600, colorAmarillo);
+            if (botonB || (dedoPresionado && delayInput == 0)) { estado = ESTADO_MENU_PRINCIPAL; seleccion = 3; delayInput = 30; }
+
+        } else if (estado == ESTADO_GALERIA) {
+            Mix_PauseMusic();
+            int res = EjecutarGaleria(renderer, fuenteMini, esIngles);
             
-            if (botonB || (dedoPresionado && delayInput == 0)) { 
-                estado = ESTADO_MENU_PRINCIPAL; seleccion = 2; delayInput = 30; 
+            // --- FIX SALIDA ---
+            if (res != -1) {
+                Mix_ResumeMusic(); // Solo reanudar musica si NO estamos saliendo
+                estado = ESTADO_MENU_PRINCIPAL;
+                seleccion = 1; 
+            } else {
+                appRunning = false; // Salir del programa limpiamente
             }
+            delayInput = 30;
 
         } else if (estado == ESTADO_CAMARA) {
             Mix_PauseMusic(); 
             dedoPresionado = false;
-            
             int res = 0;
-            
-            if (seleccion == 0) { res = EjecutarCamara(renderer, fuenteMini, esIngles); } 
-            else if (seleccion == 1) { res = EjecutarGrabadora(renderer, fuenteMini, esIngles); } 
+            if (seleccion == 1) { res = EjecutarGrabadora(renderer, fuenteMini, esIngles); } 
             else if (seleccion == 2) { res = EjecutarCamaraEfectos(renderer, fuenteMini, esIngles); }
-            else { res = EjecutarCamara(renderer, fuenteMini, esIngles); } // Fallback
+            else { res = EjecutarCamara(renderer, fuenteMini, esIngles); } 
 
-            Mix_ResumeMusic(); 
-            SDL_RenderClear(renderer); 
-            SDL_RenderPresent(renderer); 
-            
-            if (res == 1) estado = ESTADO_SUBMENU_MODOS; 
-            else if (res == -1) appRunning = false; 
+            // --- FIX SALIDA ---
+            if (res != -1) {
+                Mix_ResumeMusic(); // Solo reanudar musica si NO estamos saliendo
+                SDL_RenderClear(renderer); 
+                SDL_RenderPresent(renderer); 
+                if (res == 1) estado = ESTADO_SUBMENU_MODOS; 
+            } else {
+                appRunning = false; 
+            }
             delayInput = 30;
         }
 
         if (dedoPresionado) DibujarCursorTactil(renderer, touchX, touchY);
-
         SDL_RenderPresent(renderer);
     }
 
@@ -346,6 +318,7 @@ int main(int argc, char **argv) {
     SDL_DestroyTexture(texUpdates_ES); SDL_DestroyTexture(texUpdates_EN);
     SDL_DestroyTexture(texAgrade_ES); SDL_DestroyTexture(texAgrade_EN);
     SDL_DestroyTexture(texIdioma_ES);  SDL_DestroyTexture(texIdioma_EN);
+    SDL_DestroyTexture(texGaleria_ES); SDL_DestroyTexture(texGaleria_EN); 
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     VPADShutdown();
