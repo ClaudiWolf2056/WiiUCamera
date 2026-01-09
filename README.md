@@ -1,4 +1,4 @@
-# WiiUCamera App (v1.0.0) 📸
+# WiiUCamera v1.1.0 (Beta)
 
 [English](#english) | [Español](#español)
 
@@ -6,55 +6,46 @@
 
 <a name="english"></a>
 ## 🇬🇧 English
-**The camera app for Nintendo Wii U.**
-Transform your GamePad into a fully functional camera with photo filters and video recording capabilities.
+**Now with a fully functional Media Gallery!**
+This update brings a built-in gallery to view your photos and play your recorded videos directly on the GamePad.
 
-### ✨ Key Features
-* **📸 Photo Mode:** Take high-quality photos (saved as BMP).
-* **🎥 Video Recorder:** Record AVI videos (MJPEG/DIB) compatible with PC.
-    * *Note: Video recording is currently video-only (no audio).*
-* **🎨 Live Filters:** Apply effects in real-time!
-    * Normal, Grayscale, Sepia, Negative, GameBoy Retro.
-* **⚡ High Performance:** Optimized buffer writing for fast saving.
+### ✨ What's New?
+* **🖼️ Gallery Mode:** Browse all your captured photos and videos in a new grid interface.
+* **🎬 AVI Video Player:** Play your recorded clips with full controls!
+    * **Seek:** Use the D-Pad (Left/Right) to jump 1 second backward/forward.
+    * **Pause:** Press (A) to pause and resume.
+    * **Timeline:** Visual progress bar included.
+* **⚡ Instant Photo:** Optimized the saving process for standard photos. No more waiting!
+* **🐞 Fixes:** Improved general stability and file handling.
 
-### 🎮 Controls
-* **D-Pad:** Navigate menus / Change Filters.
-* **A Button:** Select / Take Photo / Record.
-* **B Button:** Back / Exit.
-* **Touch Screen:** Menu navigation supported.
+### ⚠️ Known Issues
+* **Exit Loop:** The application may hang on the loading screen when trying to exit to the Wii U Menu. If this happens, please force power off the console.
 
-### 💾 Installation
-1.  Download `WiiUCamera.wuhb` from Releases.
-2.  Copy it to `sd:/wiiu/apps/`.
-3.  Launch via Aroma
-4.  Photos/Videos are saved in `sd:/wiiu/apps/WiiUCamera Files/`.
+### ⚙️ Installation
+1. Download `WiiUCamera.wuhb`.
+2. Copy it to `sd:/wiiu/apps/`.
+3. Launch via Aroma.
 
 ---
 
 <a name="español"></a>
 ## 🇪🇸 Español
-**La aplicacion de cámara para Nintendo Wii U.**
-Transforma tu GamePad en una cámara funcional con filtros y grabación de video (beta).
+**¡Ahora con Galería Multimedia integrada!**
+Esta actualización añade una galería completa para ver tus fotos y reproducir tus videos grabados directamente en el GamePad.
 
-### ✨ Características Principales
-* **📸 Modo Foto:** Toma fotos de alta calidad (formato BMP).
-* **🎥 Grabadora de Video:** Graba videos AVI compatibles con PC.
-    * *Nota: La grabación es actualmente solo video (sin audio).*
-* **🎨 Filtros:** Aplica efectos en tiempo real
-    * Normal, Blanco y Negro, Sepia, Negativo, GameBoy Retro.
-* **⚡ Alto Rendimiento:** Escritura optimizada para no trabar la consola.
+### ✨ Novedades
+* **🖼️ Modo Galería:** Explora todas tus fotos y videos en una nueva interfaz de cuadrícula.
+* **🎬 Reproductor de Video AVI:** ¡Reproduce tus clips con controles completos!
+    * **Moverse:** Usa la Cruceta (Izq/Der) para retroceder o adelantar 1 segundo.
+    * **Pausa:** Presiona (A) para pausar y reanudar.
+    * **Línea de Tiempo:** Barra de progreso visual incluida.
+* **⚡ Foto Instantánea:** Se optimizó el proceso de guardado para fotos normales. ¡Ya no hay esperas!
+* **🐞 Arreglos:** Mejoras generales en la estabilidad y manejo de archivos.
 
-### 🎮 Controles
-* **Cruceta:** Navegar menú / Cambiar Filtros.
-* **Botón A:** Seleccionar / Tomar Foto / Grabar.
-* **Botón B:** Atrás / Salir.
-* **Pantalla Táctil:** Soporte para menús.
+### ⚠️ Errores Conocidos
+* **Bucle al Salir:** La aplicación podría quedarse congelada en la pantalla de carga al intentar salir al Menú de Wii U. Si esto ocurre, por favor apaga la consola forzosamente.
 
-### 💾 Instalación
-1.  Descarga `WiiUCamera.wuhb` de la sección Releases.
-2.  Cópialo en `sd:/wiiu/apps/`.
-3.  Ejecuta desde Aroma
-4.  Los archivos (fotos y videos) se guardan en `sd:/wiiu/apps/WiiUCamera Files/`.
-
----
-**Developed by ClaudiWolf2056**
+### ⚙️ Instalación
+1. Descarga el archivo `WiiUCamera.wuhb`.
+2. Cópialo en `sd:/wiiu/apps/`.
+3. Ejecuta desde Aroma.
