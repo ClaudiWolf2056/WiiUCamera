@@ -26,7 +26,7 @@ Transform your GamePad into a fully functional camera with photo filters and vid
 ### 💾 Installation
 1.  Download `WiiUCamera.wuhb` from Releases.
 2.  Copy it to `sd:/wiiu/apps/`.
-3.  Launch via Aroma/Tiramisu.
+3.  Launch via Aroma
 4.  Photos/Videos are saved in `sd:/wiiu/apps/WiiUCamera Files/`.
 
 ---
