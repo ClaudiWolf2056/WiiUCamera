@@ -16,7 +16,7 @@
 #define REC_ANCHO 640
 #define REC_ALTO  480
 #define REC_PITCH 768 
-#define MAX_FRAMES 100 // ~3.5 segundos
+#define MAX_FRAMES 120 // 4 Segundos
 
 struct VideoManager {
     uint32_t* granBufferRAM; 
@@ -51,18 +51,28 @@ void EscribirShortLE(FILE* f, uint16_t valor) {
 }
 void Escribir4Chars(FILE* f, const char* s) { fwrite(s, 1, 4, f); }
 
+// --- CABECERA ANTIGUA (LA QUE FUNCIONABA) ---
+// Escribe todo de una vez al principio. Sin fseek.
 void EscribirCabeceraAVI(FILE* f, int frames, int ancho, int alto) {
     uint32_t frameSize = ancho * alto * 4;
+    // Tamaño de los datos: (Chunk Header 8 bytes + Frame Data) * frames
     uint32_t dataSize = (frameSize + 8) * frames; 
     uint32_t riffSize = dataSize + 220; 
 
     Escribir4Chars(f, "RIFF"); EscribirIntLE(f, riffSize); Escribir4Chars(f, "AVI ");
     Escribir4Chars(f, "LIST"); EscribirIntLE(f, 192);      Escribir4Chars(f, "hdrl");
+    
+    // avih
     Escribir4Chars(f, "avih"); EscribirIntLE(f, 56);       
-    EscribirIntLE(f, 33333); EscribirIntLE(f, frameSize * 30); EscribirIntLE(f, 0); EscribirIntLE(f, 0x10);
+    EscribirIntLE(f, 33333); // 30 FPS
+    EscribirIntLE(f, frameSize * 30); // Bytes/sec
+    EscribirIntLE(f, 0); 
+    EscribirIntLE(f, 0x10); // Flags
     EscribirIntLE(f, frames); EscribirIntLE(f, 0); EscribirIntLE(f, 1); EscribirIntLE(f, frameSize);
-    EscribirIntLE(f, ancho); EscribirIntLE(f, alto); EscribirIntLE(f, 0); EscribirIntLE(f, 0); EscribirIntLE(f, 0); EscribirIntLE(f, 0); 
+    EscribirIntLE(f, ancho); EscribirIntLE(f, alto); 
+    EscribirIntLE(f, 0); EscribirIntLE(f, 0); EscribirIntLE(f, 0); EscribirIntLE(f, 0); 
 
+    // vids
     Escribir4Chars(f, "LIST"); EscribirIntLE(f, 116);      Escribir4Chars(f, "strl");
     Escribir4Chars(f, "strh"); EscribirIntLE(f, 56);
     Escribir4Chars(f, "vids"); Escribir4Chars(f, "DIB ");
@@ -77,7 +87,7 @@ void EscribirCabeceraAVI(FILE* f, int frames, int ancho, int alto) {
     EscribirIntLE(f, 40); EscribirIntLE(f, ancho); EscribirIntLE(f, alto);
     EscribirShortLE(f, 1); EscribirShortLE(f, 32);
     EscribirIntLE(f, 0); EscribirIntLE(f, frameSize);
-    EscribirIntLE(f, 0); EscribirIntLE(f, 0); EscribirIntLE(f, 0); EscribirIntLE(f, 0);
+    EscribirIntLE(f, 0); EscribirIntLE(f, 0); EscribirIntLE(f, 0); EscribirIntLE(f, 0); 
 
     Escribir4Chars(f, "LIST"); EscribirIntLE(f, dataSize + 4); Escribir4Chars(f, "movi");
 }
@@ -131,7 +141,6 @@ void CerrarGrabadoraContexto(ContextoRecorder* ctx) {
     ctx->exito = false;
 }
 
-// --- FUNCIÓN DE GUARDADO (Fix Vertical + UI) ---
 void GuardarVideoAVI(SDL_Renderer* renderer, VideoManager* vm, TTF_Font* font) {
     const char* rutaBase = "fs:/vol/external01/WiiUCamera Files";
     mkdir(rutaBase, 0777);
@@ -140,68 +149,68 @@ void GuardarVideoAVI(SDL_Renderer* renderer, VideoManager* vm, TTF_Font* font) {
     char nombreArchivo[256];
     sprintf(nombreArchivo, "%s/Video_%ld.avi", rutaBase, (long)t);
 
+    // Pantalla de espera
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
     SDL_Color colorTexto = {255, 255, 0, 255};
     SDL_Surface* txtSurf = TTF_RenderText_Blended(font, "GUARDANDO... / SAVING...", colorTexto);
     SDL_Texture* txtTex = SDL_CreateTextureFromSurface(renderer, txtSurf);
-    SDL_Rect rect = {(1280 - txtSurf->w)/2, 300, txtSurf->w, txtSurf->h};
-    
-    SDL_Surface* txtSurf2 = TTF_RenderText_Blended(font, "Espere por favor / Please wait", colorTexto);
-    SDL_Texture* txtTex2 = SDL_CreateTextureFromSurface(renderer, txtSurf2);
-    SDL_Rect rect2 = {(1280 - txtSurf2->w)/2, 380, txtSurf2->w, txtSurf2->h};
-
+    SDL_Rect rect = {(1280 - txtSurf->w)/2, 360, txtSurf->w, txtSurf->h};
     SDL_RenderCopy(renderer, txtTex, NULL, &rect);
-    SDL_RenderCopy(renderer, txtTex2, NULL, &rect2);
     SDL_RenderPresent(renderer);
-    
     SDL_FreeSurface(txtSurf); SDL_DestroyTexture(txtTex);
-    SDL_FreeSurface(txtSurf2); SDL_DestroyTexture(txtTex2);
 
     FILE* f = fopen(nombreArchivo, "wb");
     if (f) {
+        // 1. ESCRIBIR CABECERA AL PRINCIPIO (ESTRATEGIA ANTIGUA SEGURA)
+        // Como ya sabemos cuántos frames capturamos, escribimos la cabecera correcta de una vez.
         EscribirCabeceraAVI(f, vm->framesCapturados, REC_ANCHO, REC_ALTO);
+        
         uint32_t tamanoFrame = REC_ANCHO * REC_ALTO * 4;
         
-        for(int i=0; i < vm->framesCapturados; i++) {
-             Escribir4Chars(f, "00db"); 
-             EscribirIntLE(f, tamanoFrame);
-             
-             // Puntero al inicio de ESTE frame en la RAM
-             uint32_t* ptrFrameStart = vm->granBufferRAM + (i * (REC_ANCHO * REC_ALTO));
+        // 2. BUFFER DE ESCRITURA (ESTRATEGIA NUEVA RÁPIDA)
+        // Usamos malloc para crear un buffer temporal de 1 frame (1.2 MB)
+        // Esto evita el "cuelgue" por escribir píxel por píxel.
+        uint32_t* frameBuffer = (uint32_t*)malloc(tamanoFrame);
 
-             // --- FIX VERTICAL ---
-             // Leemos el frame "al revés" (de abajo a arriba) línea por línea
-             // para que el AVI salga derecho.
-             for (int y = REC_ALTO - 1; y >= 0; y--) {
-                 uint32_t* ptrLinea = ptrFrameStart + (y * REC_ANCHO);
-
-                 for (int x = 0; x < REC_ANCHO; x++) {
-                     uint32_t pixelOriginal = ptrLinea[x];
-                     
-                     // RAM (WiiU): RR GG BB AA
-                     // AVI (PC):   BB GG RR AA
-                     uint32_t r = (pixelOriginal >> 24) & 0xFF;
-                     uint32_t g = (pixelOriginal >> 16) & 0xFF;
-                     uint32_t b = (pixelOriginal >> 8) & 0xFF;
-                     uint32_t a = pixelOriginal & 0xFF;
-                     
-                     uint32_t pixelAVI = (b << 24) | (g << 16) | (r << 8) | a;
-                     fwrite(&pixelAVI, 4, 1, f);
+        if (frameBuffer) {
+            for(int i=0; i < vm->framesCapturados; i++) {
+                 // Chunk Header
+                 Escribir4Chars(f, "00db"); EscribirIntLE(f, tamanoFrame);
+                 
+                 uint32_t* ptrFrameStart = vm->granBufferRAM + (i * (REC_ANCHO * REC_ALTO));
+                 
+                 // Llenamos el buffer en RAM (Súper rápido)
+                 int idx = 0;
+                 for (int y = REC_ALTO - 1; y >= 0; y--) { // Fix Vertical
+                     uint32_t* ptrLinea = ptrFrameStart + (y * REC_ANCHO);
+                     for (int x = 0; x < REC_ANCHO; x++) {
+                         uint32_t pixelOriginal = ptrLinea[x];
+                         // Swap RGBA -> BGRA (Corrección Color)
+                         uint32_t r = (pixelOriginal >> 24) & 0xFF;
+                         uint32_t g = (pixelOriginal >> 16) & 0xFF;
+                         uint32_t b = (pixelOriginal >> 8) & 0xFF;
+                         uint32_t a = pixelOriginal & 0xFF;
+                         
+                         frameBuffer[idx++] = (b << 24) | (g << 16) | (r << 8) | a;
+                     }
                  }
-             }
+                 // Escribimos 1.2MB de golpe a la SD (Rápido y seguro)
+                 fwrite(frameBuffer, 1, tamanoFrame, f);
+            }
+            free(frameBuffer);
         }
+
+        fflush(f);
         fclose(f);
     }
 }
 
-// Función auxiliar para dibujar texto en la barra lateral
 void DibujarInfoLateral(SDL_Renderer* renderer, TTF_Font* font, const char* texto, int y) {
     SDL_Color col = {200, 200, 200, 255};
     SDL_Surface* s = TTF_RenderText_Blended(font, texto, col);
     if(s) {
         SDL_Texture* t = SDL_CreateTextureFromSurface(renderer, s);
-        // Barra negra empieza en 960. Centramos un poco en esa área (980)
         SDL_Rect r = {980, y, s->w, s->h}; 
         SDL_RenderCopy(renderer, t, NULL, &r);
         SDL_FreeSurface(s); SDL_DestroyTexture(t);
@@ -214,12 +223,15 @@ int EjecutarGrabadora(SDL_Renderer* renderer, TTF_Font* font, bool esIngles) {
     vm.framesCapturados = 0;
     vm.grabando = false;
     
-    size_t tamanoTotal = REC_ANCHO * REC_ALTO * 4 * MAX_FRAMES;
-    vm.granBufferRAM = (uint32_t*)memalign(256, tamanoTotal);
-    if (!vm.granBufferRAM) { CerrarGrabadoraContexto(&ctx); return 0; }
+    size_t tamanoTotalVideo = REC_ANCHO * REC_ALTO * 4 * MAX_FRAMES;
+    vm.granBufferRAM = (uint32_t*)memalign(256, tamanoTotalVideo);
+
+    if (!vm.granBufferRAM) { 
+        CerrarGrabadoraContexto(&ctx); return 0; 
+    }
 
     SDL_Rect destinoRect = {0, 0, 960, 720}; 
-    int offsetUV = REC_PITCH * REC_ALTO;
+    int offsetUV = REC_PITCH * REC_ALTO; // Corregido
     bool enRecorder = true;
     recFrameListo = false;
     int resultado = 0;
@@ -250,9 +262,7 @@ int EjecutarGrabadora(SDL_Renderer* renderer, TTF_Font* font, bool esIngles) {
                     int idx=fUV+x, u=ctx.rawBuffer[idx]-128, v=ctx.rawBuffer[idx+1]-128;
                     int cR=(351*v)>>8, cG=((86*u)+(179*v))>>8, cB=(444*u)>>8;
                     #define CL(v) (((v)>255)?255:(((v)<0)?0:(v)))
-                    // En pantalla usamos RGBA normal
                     auto p = [&](int yv){ return (CL(yv+cR)<<24) | (CL(yv-cG)<<16) | (CL(yv+cB)<<8) | 0xFF; };
-
                     ctx.cleanBuffer[fOut1+x] = p(ctx.rawBuffer[fY1+x]); ctx.cleanBuffer[fOut1+x+1] = p(ctx.rawBuffer[fY1+x+1]);
                     ctx.cleanBuffer[fOut2+x] = p(ctx.rawBuffer[fY2+x]); ctx.cleanBuffer[fOut2+x+1] = p(ctx.rawBuffer[fY2+x+1]);
                 }
@@ -273,38 +283,26 @@ int EjecutarGrabadora(SDL_Renderer* renderer, TTF_Font* font, bool esIngles) {
         SDL_RenderClear(renderer);
         if (ctx.textura) SDL_RenderCopy(renderer, ctx.textura, NULL, &destinoRect);
         
-        // --- INTERFAZ UI CORREGIDA (Derecha) ---
+        // INTERFAZ
         if (vm.grabando) {
-            // Punto Rojo
             static int blink = 0; blink++;
             if ((blink / 10) % 2 == 0) {
                 SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
                 SDL_Rect recDot = {1100, 50, 30, 30};
                 SDL_RenderFillRect(renderer, &recDot);
             }
-            // Barra Progreso
-            int barraW = (vm.framesCapturados * 280) / MAX_FRAMES; // Ancho max 280px
+            int barraW = (vm.framesCapturados * 280) / MAX_FRAMES;
             SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
             SDL_Rect barra = {980, 100, barraW, 20};
             SDL_RenderFillRect(renderer, &barra);
-            
             DibujarInfoLateral(renderer, font, "REC...", 130);
         } else {
-             // Textos de advertencia ordenados
              if (esIngles) {
-                DibujarInfoLateral(renderer, font, "Mode: AVI Video", 50);
+                DibujarInfoLateral(renderer, font, "Mode: Video", 50);
                 DibujarInfoLateral(renderer, font, "Press A to REC", 100);
-                DibujarInfoLateral(renderer, font, "Max: 3.5 sec", 200);
-                DibujarInfoLateral(renderer, font, "File: >100 MB", 240);
-                DibujarInfoLateral(renderer, font, "Processing takes", 300);
-                DibujarInfoLateral(renderer, font, "time!", 330);
              } else {
-                DibujarInfoLateral(renderer, font, "Modo: Video AVI", 50);
+                DibujarInfoLateral(renderer, font, "Modo: Video", 50);
                 DibujarInfoLateral(renderer, font, "Presiona A: REC", 100);
-                DibujarInfoLateral(renderer, font, "Max: 3.5 seg", 200);
-                DibujarInfoLateral(renderer, font, "Archivo: >100MB", 240);
-                DibujarInfoLateral(renderer, font, "Al terminar,", 300);
-                DibujarInfoLateral(renderer, font, "espera un poco.", 330);
              }
         }
         SDL_RenderPresent(renderer);

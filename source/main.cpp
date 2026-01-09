@@ -8,11 +8,12 @@
 #include <vector>
 #include <string>
 
-// INCLUIMOS NUESTROS MODULOS
+// --- MÓDULOS DE LA SUITE ---
 #include "camara.h" 
-#include "recorder.h" // <--- ¡NUEVO! Para el video AVI
+#include "recorder.h" 
+#include "camera_effects.h" 
 
-const char* APP_VERSION = "v0.9.0 Video Beta";
+const char* APP_VERSION = "v1.0.0 Release";
 
 enum EstadoApp {
     ESTADO_MENU_PRINCIPAL,
@@ -73,7 +74,7 @@ void DibujarTextoCentrado(SDL_Renderer* renderer, TTF_Font* font, const char* te
     }
 }
 
-// Cursor táctil (Cuadro rojo transparente)
+// Cursor táctil
 void DibujarCursorTactil(SDL_Renderer* renderer, int x, int y) {
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND); 
     SDL_SetRenderDrawColor(renderer, 255, 0, 0, 150); 
@@ -93,7 +94,6 @@ void DibujarBotonCentrado(SDL_Renderer* renderer, SDL_Texture* texturaBoton, int
     SDL_QueryTexture(texturaBoton, NULL, NULL, &w, &h);
     int x = centroX - (w / 2);
     int y = centroY - (h / 2);
-    
     if (outRect) { outRect->x = x; outRect->y = y; outRect->w = w; outRect->h = h; }
 
     SDL_Rect rectBoton = { x, y, w, h };
@@ -116,7 +116,7 @@ int main(int argc, char **argv) {
     IniciarAudio();
 
     SDL_Window *window = SDL_CreateWindow("WiiUCamera", 0, 0, 1280, 720, 0);
-    // VSync Activado para evitar rayas
+    // VSync Activado para evitar rayas (Screen Tearing)
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
     TTF_Font* fuenteGrande = TTF_OpenFont("/vol/content/font.ttf", 64);
@@ -239,9 +239,9 @@ int main(int argc, char **argv) {
 
         } else if (estado == ESTADO_SUBMENU_MODOS) {
             DibujarTextoCentrado(renderer, fuenteGrande, esIngles ? "Camera Mode" : "Modo de Camara", 120, colorBlanco);
-            // 0: Fotos Normal, 1: Video Beta, 2: Efectos, 3: Pronto
-            const char* opEN[] = { "Take photo (normal)", "Record video (Beta)", "Take photo (effects)", "Soon..." };
-            const char* opES[] = { "Tomar foto (normal)", "Grabar video (Beta)", "Tomar foto (efectos)", "Pronto..." };
+            
+            const char* opEN[] = { "Take photo (normal)", "Record video (AVI)", "Effects (Filters)", "Soon..." };
+            const char* opES[] = { "Tomar foto (normal)", "Grabar video (AVI)", "Efectos (Filtros)", "Pronto..." };
             
             int startY = 300;
             for (int i = 0; i < 4; i++) {
@@ -269,32 +269,59 @@ int main(int argc, char **argv) {
                 if (botonA) { ReproducirSonidoSelect(); estado = ESTADO_CAMARA; delayInput = 30; }
             }
 
-        } else if (estado == ESTADO_UPDATES || estado == ESTADO_AGRADECIMIENTOS) {
-            bool isUpd = (estado == ESTADO_UPDATES);
-            DibujarTextoCentrado(renderer, fuenteGrande, isUpd ? (esIngles?"Updates":"Actualizaciones") : (esIngles?"Credits":"Agradecimientos"), 120, colorBlanco);
-            DibujarTextoCentrado(renderer, fuentePequena, isUpd ? (esIngles?"More updates soon...":"Mas actualizaciones pronto...") : (esIngles?"Credits coming soon":"Creditos proximamente"), 350, colorBlanco);
-            DibujarTextoCentrado(renderer, fuentePequena, esIngles?"(Press B to return)":"(Presiona B para volver)", 600, colorBlanco);
+        } else if (estado == ESTADO_UPDATES) {
+            // --- PANTALLA DE ACTUALIZACIONES ---
+            DibujarTextoCentrado(renderer, fuenteGrande, esIngles ? "Changelog" : "Novedades", 50, colorAmarillo);
+            
+            int startY = 160; int gap = 45; SDL_Color colTxt = colorBlanco;
+            
+            if (esIngles) {
+                DibujarTextoCentrado(renderer, fuentePequena, "v1.0.0 - The Release", startY, colTxt);
+                DibujarTextoCentrado(renderer, fuenteMini, "- NEW: AVI Video Recorder (Silent Mode)", startY + gap*1.5, colTxt);
+                DibujarTextoCentrado(renderer, fuenteMini, "- NEW: Photo Filters (GameBoy, Sepia, etc.)", startY + gap*2.5, colTxt);
+                DibujarTextoCentrado(renderer, fuenteMini, "- FIX: High Speed Saving (No freezing)", startY + gap*3.5, colTxt);
+                DibujarTextoCentrado(renderer, fuenteMini, "- FIX: Fixed visual glitches (VSync)", startY + gap*4.5, colTxt);
+            } else {
+                DibujarTextoCentrado(renderer, fuentePequena, "v1.0.0 - Lanzamiento", startY, colTxt);
+                DibujarTextoCentrado(renderer, fuenteMini, "- NUEVO: Grabadora de Video AVI (Modo Silencio)", startY + gap*1.5, colTxt);
+                DibujarTextoCentrado(renderer, fuenteMini, "- NUEVO: Filtros (GameBoy, Sepia, etc.)", startY + gap*2.5, colTxt);
+                DibujarTextoCentrado(renderer, fuenteMini, "- FIX: Guardado Ultra-Rapido (Sin cuelgues)", startY + gap*3.5, colTxt);
+                DibujarTextoCentrado(renderer, fuenteMini, "- FIX: Arreglados fallos visuales (VSync)", startY + gap*4.5, colTxt);
+            }
+
+            DibujarTextoCentrado(renderer, fuentePequena, esIngles ? "(Press B to return)" : "(Presiona B para volver)", 600, colorAmarillo);
             
             if (botonB || (dedoPresionado && delayInput == 0)) { 
-                estado = ESTADO_MENU_PRINCIPAL; 
-                seleccion = isUpd ? 1 : 2; 
-                delayInput = 30; 
+                estado = ESTADO_MENU_PRINCIPAL; seleccion = 1; delayInput = 30; 
+            }
+
+        } else if (estado == ESTADO_AGRADECIMIENTOS) {
+            // --- PANTALLA DE CRÉDITOS ---
+            DibujarTextoCentrado(renderer, fuenteGrande, esIngles ? "Credits" : "Creditos", 50, colorAmarillo);
+
+            int startY = 200;
+            DibujarTextoCentrado(renderer, fuentePequena, esIngles ? "Created by:" : "Creado por:", startY, colorBlanco);
+            DibujarTextoCentrado(renderer, fuenteGrande, "ClaudiWolf2056", startY + 60, colorAmarillo);
+            
+            DibujarTextoCentrado(renderer, fuenteMini, esIngles ? "Powered by:" : "Usando tecnologia:", startY + 180, colorBlanco);
+            DibujarTextoCentrado(renderer, fuenteMini, "SDL2 for Wii U - DevkitPro - LibCamera", startY + 220, colorBlanco);
+
+            DibujarTextoCentrado(renderer, fuentePequena, esIngles ? "(Press B to return)" : "(Presiona B para volver)", 600, colorAmarillo);
+            
+            if (botonB || (dedoPresionado && delayInput == 0)) { 
+                estado = ESTADO_MENU_PRINCIPAL; seleccion = 2; delayInput = 30; 
             }
 
         } else if (estado == ESTADO_CAMARA) {
             Mix_PauseMusic(); 
-            dedoPresionado = false; // Reset táctil al entrar
+            dedoPresionado = false;
             
             int res = 0;
             
-            // --- DECISIÓN: ¿FOTO O VIDEO? ---
-            if (seleccion == 1) { 
-                // Opción 1 del menú es "Grabar video"
-                res = EjecutarGrabadora(renderer, fuenteMini, esIngles);
-            } else {
-                // Opción 0, 2 o 3 por ahora van a la Cámara de Fotos normal
-                res = EjecutarCamara(renderer, fuenteMini, esIngles);
-            }
+            if (seleccion == 0) { res = EjecutarCamara(renderer, fuenteMini, esIngles); } 
+            else if (seleccion == 1) { res = EjecutarGrabadora(renderer, fuenteMini, esIngles); } 
+            else if (seleccion == 2) { res = EjecutarCamaraEfectos(renderer, fuenteMini, esIngles); }
+            else { res = EjecutarCamara(renderer, fuenteMini, esIngles); } // Fallback
 
             Mix_ResumeMusic(); 
             SDL_RenderClear(renderer); 
