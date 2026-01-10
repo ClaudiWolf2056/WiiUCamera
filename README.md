@@ -24,7 +24,7 @@ This update brings a built-in gallery to view your photos and play your recorded
 ### ⚙️ Installation
 1. Download `WiiUCamera.wuhb`.
 2. Copy it to `sd:/wiiu/apps/`.
-3. Launch via Aroma.
+3. Launch in Wii U Menu
 
 ---
 
@@ -48,4 +48,4 @@ Esta actualización añade una galería completa para ver tus fotos y reproducir
 ### ⚙️ Instalación
 1. Descarga el archivo `WiiUCamera.wuhb`.
 2. Cópialo en `sd:/wiiu/apps/`.
-3. Ejecuta desde Aroma.
+3. Ejecutar desde Menú de Wii U
