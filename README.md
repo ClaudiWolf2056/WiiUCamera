@@ -104,19 +104,21 @@ Made with ❤️ for users who still use Wii U.
 ## 🇪🇸 Español
 Una aplicación para Nintendo Wii U que transforma tu GamePad en una cámara funcional con capacidad de grabación, filtros y galería.
 
-✨ Características Principales
-📷 Modo Foto: Toma fotografías y guárdalas en la tarjeta SD.
-🎥 Modo Video: Graba clips de video en formato AVI (m-jpeg).
-✨ Efectos: Aplica filtros en tiempo real a la imagen de la cámara.
-🖼️ Galería Integrada: Visualiza tus fotos y videos sin salir de la aplicación.
-🎵 Música y SFX: Interfaz con audio de fondo y efectos de sonido.
-🇺🇸/🇪🇸 Multi-idioma: Soporte para Inglés y Español (cambiable desde el menú).
+### ✨ Características principales
+* **📷 Modo Foto:** Toma fotos y guárdalas en la tarjeta SD.
+* **🎥 Modo Vídeo:** Graba videoclips en formato AVI (m-jpeg).
+* **✨ Efectos:** Aplica filtros en tiempo real a la señal de la cámara.
+* **🖼️ Galería integrada:** Ve tus fotos y vídeos sin salir de la aplicación.
+* **🎵 Música y efectos de sonido:** Interfaz con audio de fondo y efectos de sonido.
+* **🇪🇸/🇪🇸 Multiidioma:** Disponible en inglés y español (cambiable desde el menú).
 
-📥 Instalación (Para Usuarios)
-Descarga el archivo WiiUCamera.wuhb de la última versión.
-Copia el archivo en tu tarjeta SD en la siguiente ruta: SD:/wiiu/apps/WiiUCamera/WiiUCamera.wuhb
-Inserta la SD en tu consola y lanza la aplicación desde el menú de Aroma/Tiramisu.
-Nota: Las fotos y videos se guardarán automáticamente en: SD:/wiiu/apps/WiiUCamera Files/
+### 📥 Instalación (Para usuarios)
+1. Descarga la última versión del archivo **`WiiUCamera.wuhb`**.
+2. Copia el archivo a tu tarjeta SD en la siguiente ruta:
+`SD:/wiiu/apps/WiiUCamera/WiiUCamera.wuhb`
+3. Inserta la tarjeta SD en tu consola e inicia la aplicación desde el menú Aroma/Tiramisu.
+
+> **Nota:** Las fotos y los vídeos se guardarán automáticamente en: `SD:/wiiu/apps/WiiUCamera Files/`
 
 | Botón | Acción |
 | :--- | :--- |
