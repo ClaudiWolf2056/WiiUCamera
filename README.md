@@ -1,4 +1,4 @@
-# WiiUCamera v1.1.0 (Beta)
+# WiiUCamera v1.1.6 (Beta) 📸
 
 [English](#english) | [Español](#español)
 
@@ -6,46 +6,69 @@
 
 <a name="english"></a>
 ## 🇬🇧 English
-**Now with a fully functional Media Gallery!**
-This update brings a built-in gallery to view your photos and play your recorded videos directly on the GamePad.
 
-### ✨ What's New?
-* **🖼️ Gallery Mode:** Browse all your captured photos and videos in a new grid interface.
-* **🎬 AVI Video Player:** Play your recorded clips with full controls!
-    * **Seek:** Use the D-Pad (Left/Right) to jump 1 second backward/forward.
-    * **Pause:** Press (A) to pause and resume.
-    * **Timeline:** Visual progress bar included.
-* **⚡ Instant Photo:** Optimized the saving process for standard photos. No more waiting!
-* **🐞 Fixes:** Improved general stability and file handling.
+A native camera application for the Nintendo Wii U! Take photos, record videos, apply filters, and view your gallery directly on the GamePad.
 
-### ⚠️ Known Issues
-* **Exit Loop:** The application may hang on the loading screen when trying to exit to the Wii U Menu. If this happens, please force power off the console.
+### ⚠️ KNOWN ISSUE: EXIT BUG (IMPORTANT)
+**Please read before use:**
+Due to a limitation in the current SDL2 audio drivers for Wii U, the application **may freeze on a white screen** when you try to exit (via the Home button or "Exit" option).
+* **Solution:** If the console hangs, simply **hold the POWER button on the console for 4 seconds** to force a shutdown.
+* **Safety:** This is a safe procedure and **will not harm your console or corrupt your SD card data**.
+
+### ✨ Features
+* **Photo Mode:** Take snapshots using the GamePad camera (saved as BMP).
+* **Video Mode:** Record short video clips (AVI format).
+* **Filters Mode:** Apply real-time effects (Grayscale, Sepia, GameBoy, Negative).
+* **Gallery:** View your photos and watch your recorded videos directly in the app.
+* **Bilingual:** Full English and Spanish support.
 
 ### ⚙️ Installation
-1. Download `WiiUCamera.wuhb`.
-2. Copy it to `sd:/wiiu/apps/`.
-3. Launch in Wii U Menu
+1.  Download the latest `WiiUCamera.wuhb` from the [Releases page](../../releases).
+2.  Copy the file to your SD card:
+    `SD:/wiiu/apps/WiiUCamera.wuhb`
+3.  Launch via **Aroma Environment**.
+
+### 🎮 Controls
+* **A Button:** Take Photo / Start & Stop Recording / Select.
+* **B Button:** Exit Mode / Back.
+* **D-Pad (Left/Right):** Change Filters / Scroll Gallery / Seek Video.
+* **Touchscreen:** Navigate the Main Menu.
 
 ---
 
 <a name="español"></a>
 ## 🇪🇸 Español
-**¡Ahora con Galería Multimedia integrada!**
-Esta actualización añade una galería completa para ver tus fotos y reproducir tus videos grabados directamente en el GamePad.
 
-### ✨ Novedades
-* **🖼️ Modo Galería:** Explora todas tus fotos y videos en una nueva interfaz de cuadrícula.
-* **🎬 Reproductor de Video AVI:** ¡Reproduce tus clips con controles completos!
-    * **Moverse:** Usa la Cruceta (Izq/Der) para retroceder o adelantar 1 segundo.
-    * **Pausa:** Presiona (A) para pausar y reanudar.
-    * **Línea de Tiempo:** Barra de progreso visual incluida.
-* **⚡ Foto Instantánea:** Se optimizó el proceso de guardado para fotos normales. ¡Ya no hay esperas!
-* **🐞 Arreglos:** Mejoras generales en la estabilidad y manejo de archivos.
+¡Una aplicación de cámara nativa para la Nintendo Wii U! Toma fotos, graba videos, aplica filtros y visualiza tu galería directamente en el GamePad.
 
-### ⚠️ Errores Conocidos
-* **Bucle al Salir:** La aplicación podría quedarse congelada en la pantalla de carga al intentar salir al Menú de Wii U. Si esto ocurre, por favor apaga la consola forzosamente.
+### ⚠️ ERROR CONOCIDO: AL SALIR (IMPORTANTE)
+**Por favor lee antes de usar:**
+Debido a una limitación en los drivers de audio (SDL2) actuales de Wii U, la aplicación **puede quedarse cargando** al intentar salir (botón Home o Salir).
+* **Solución:** Si la consola se queda cargando, simplemente **mantén presionado el botón POWER de la consola durante 4 segundos** para forzar el apagado.
+* **Seguridad:** Este es un procedimiento seguro y **NO dañará tu consola ni corromperá los datos de tu tarjeta SD**.
+
+### ✨ Características
+* **Modo Foto:** Toma fotos usando la cámara del GamePad (guardadas como BMP).
+* **Modo Video:** Graba clips de video cortos (formato AVI).
+* **Modo Filtros:** Aplica efectos en tiempo real (Escala de Grises, Sepia, GameBoy, Negativo).
+* **Galería:** Mira tus fotos y reproduce tus videos grabados dentro de la app.
+* **Bilingüe:** Soporte completo en Inglés y Español.
 
 ### ⚙️ Instalación
-1. Descarga el archivo `WiiUCamera.wuhb`.
-2. Cópialo en `sd:/wiiu/apps/`.
-3. Ejecutar desde Menú de Wii U
+1.  Descarga el último archivo `WiiUCamera.wuhb` desde la sección de [Releases](../../releases).
+2.  Copia el archivo a tu tarjeta SD en:
+    `SD:/wiiu/apps/WiiUCamera.wuhb`
+3.  Ejecuta usando el entorno **Aroma**.
+
+### 🎮 Controles
+* **Botón A:** Tomar Foto / Iniciar y Parar Grabación / Seleccionar.
+* **Botón B:** Salir del Modo / Atrás.
+* **Cruceta (Izq/Der):** Cambiar Filtros / Moverse en Galería / Adelantar Video.
+* **Pantalla Táctil:** Navegar por el Menú Principal.
+
+---
+
+## 👥 Credits / Créditos
+
+**Created by / Creado por:**
+* ClaudiWolf2056
