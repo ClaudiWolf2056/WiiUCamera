@@ -56,7 +56,6 @@ For CMakeLists.txt to work and package resources correctly, your folder must loo
 ├── source/              # Source Code
 │   ├── main.cpp
 │   ├── camara.h
-│   ├── camara.cpp
 │   ├── recorder.h
 │   ├── etc...
 └── fs/                  # Resource Files (Assets)
@@ -148,7 +147,6 @@ Para que CMakeLists.txt funcione y empaquete los recursos correctamente, tu carp
 ├── source/ # Código fuente
 │ ├── main.cpp
 │ ├── camara.h
-│ ├── camara.cpp
 │ ├── recorder.h
 │ ├── etc...
 └── fs/ # Archivos de recursos (Recursos)
