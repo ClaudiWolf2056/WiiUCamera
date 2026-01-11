@@ -21,7 +21,7 @@ A Nintendo Wii U application that transforms your GamePad into a functional came
 1.  Download the latest **`WiiUCamera.wuhb`** file.
 2.  Copy the file to your SD card in the following path:
     `SD:/wiiu/apps/WiiUCamera/WiiUCamera.wuhb`
-3.  Insert the SD card into your console and launch the application from the Aroma/Tiramisu menu.
+3.  Insert the SD card into your console and launch the application from the Aroma menu.
 
 > **Note:** Photos and videos will be saved automatically to: `SD:/wiiu/apps/WiiUCamera Files/`
 
@@ -116,7 +116,7 @@ Una aplicación para Nintendo Wii U que transforma tu GamePad en una cámara fun
 1. Descarga la última versión del archivo **`WiiUCamera.wuhb`**.
 2. Copia el archivo a tu tarjeta SD en la siguiente ruta:
 `SD:/wiiu/apps/WiiUCamera/WiiUCamera.wuhb`
-3. Inserta la tarjeta SD en tu consola e inicia la aplicación desde el menú Aroma/Tiramisu.
+3. Inserta la tarjeta SD en tu consola e inicia la aplicación desde el menú Aroma
 
 > **Nota:** Las fotos y los vídeos se guardarán automáticamente en: `SD:/wiiu/apps/WiiUCamera Files/`
 
