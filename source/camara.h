@@ -71,7 +71,6 @@ void ProcesarFrameCamara(ContextoCamara* ctx) {
     }
 }
 
-// GUARDADO INSTANTÁNEO (Sin mkdir)
 void GuardarFotoNormalRapido(SDL_Renderer* renderer, TTF_Font* font, ContextoCamara* ctx) {
     SDL_Color col = {255, 255, 0, 255};
     SDL_Surface* sMsg = TTF_RenderText_Blended(font, "GUARDANDO... / SAVING...", col);
@@ -217,12 +216,24 @@ int EjecutarCamara(SDL_Renderer* renderer, TTF_Font* font, bool esIngles) {
         if (ctx.textura) SDL_RenderCopy(renderer, ctx.textura, NULL, &rectCamara);
 
         SDL_Color col = {255, 255, 255, 255};
-        SDL_Surface* sA = TTF_RenderText_Blended(font, esIngles ? "(A) Take Photo" : "(A) Tomar Foto", col);
-        if(sA) {
-            SDL_Texture* tA = SDL_CreateTextureFromSurface(renderer, sA);
-            SDL_Rect rA = {980, 200, sA->w, sA->h};
-            SDL_RenderCopy(renderer, tA, NULL, &rA);
-            SDL_FreeSurface(sA); SDL_DestroyTexture(tA);
+        
+        // --- UI ACTUALIZADA (Texto Lateral) ---
+        if (esIngles) {
+             SDL_Surface* s1 = TTF_RenderText_Blended(font, "Mode: Photo", col);
+             SDL_Surface* s2 = TTF_RenderText_Blended(font, "(A) Take Photo", col);
+             SDL_Surface* s3 = TTF_RenderText_Blended(font, "(B) Exit Mode", col);
+             
+             if(s1){ SDL_Texture* t=SDL_CreateTextureFromSurface(renderer,s1); SDL_Rect r={980,50,s1->w,s1->h}; SDL_RenderCopy(renderer,t,NULL,&r); SDL_FreeSurface(s1); SDL_DestroyTexture(t); }
+             if(s2){ SDL_Texture* t=SDL_CreateTextureFromSurface(renderer,s2); SDL_Rect r={980,100,s2->w,s2->h}; SDL_RenderCopy(renderer,t,NULL,&r); SDL_FreeSurface(s2); SDL_DestroyTexture(t); }
+             if(s3){ SDL_Texture* t=SDL_CreateTextureFromSurface(renderer,s3); SDL_Rect r={980,150,s3->w,s3->h}; SDL_RenderCopy(renderer,t,NULL,&r); SDL_FreeSurface(s3); SDL_DestroyTexture(t); }
+        } else {
+             SDL_Surface* s1 = TTF_RenderText_Blended(font, "Modo: Foto", col);
+             SDL_Surface* s2 = TTF_RenderText_Blended(font, "(A) Tomar Foto", col);
+             SDL_Surface* s3 = TTF_RenderText_Blended(font, "(B) Salir Modo", col);
+
+             if(s1){ SDL_Texture* t=SDL_CreateTextureFromSurface(renderer,s1); SDL_Rect r={980,50,s1->w,s1->h}; SDL_RenderCopy(renderer,t,NULL,&r); SDL_FreeSurface(s1); SDL_DestroyTexture(t); }
+             if(s2){ SDL_Texture* t=SDL_CreateTextureFromSurface(renderer,s2); SDL_Rect r={980,100,s2->w,s2->h}; SDL_RenderCopy(renderer,t,NULL,&r); SDL_FreeSurface(s2); SDL_DestroyTexture(t); }
+             if(s3){ SDL_Texture* t=SDL_CreateTextureFromSurface(renderer,s3); SDL_Rect r={980,150,s3->w,s3->h}; SDL_RenderCopy(renderer,t,NULL,&r); SDL_FreeSurface(s3); SDL_DestroyTexture(t); }
         }
 
         if (frameFlash > 0) {

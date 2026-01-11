@@ -42,9 +42,7 @@ void VerFoto(SDL_Renderer* renderer, TTF_Font* font, const std::string& ruta, bo
     bool viendo = true;
     while (viendo) {
         SDL_Event event;
-        while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_QUIT) viendo = false;
-        }
+        while (SDL_PollEvent(&event)) { if (event.type == SDL_QUIT) viendo = false; }
         VPADStatus vpad; VPADReadError err;
         VPADRead(VPAD_CHAN_0, &vpad, 1, &err);
 
@@ -64,17 +62,14 @@ void VerFoto(SDL_Renderer* renderer, TTF_Font* font, const std::string& ruta, bo
         if (sTxt) {
             SDL_Texture* tTxt = SDL_CreateTextureFromSurface(renderer, sTxt);
             SDL_Rect rTxt = { (1280 - sTxt->w)/2, 650, sTxt->w, sTxt->h };
-            
+            SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, 150);
             SDL_Rect rBack = {rTxt.x - 10, rTxt.y - 5, rTxt.w + 20, rTxt.h + 10};
-            SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
             SDL_RenderFillRect(renderer, &rBack);
             SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
-
             SDL_RenderCopy(renderer, tTxt, NULL, &rTxt);
             SDL_FreeSurface(sTxt); SDL_DestroyTexture(tTxt);
         }
-
         SDL_RenderPresent(renderer);
     }
     SDL_DestroyTexture(tex);
@@ -118,74 +113,51 @@ void ReproducirVideoAVI(SDL_Renderer* renderer, TTF_Font* font, const std::strin
         if (vpad.trigger & VPAD_BUTTON_B) reproduciendo = false;
         if (vpad.trigger & VPAD_BUTTON_A) pausado = !pausado;
 
-        if (vpad.trigger & VPAD_BUTTON_RIGHT) {
-            frameActual += 30; 
-            if (frameActual >= totalFrames) frameActual = totalFrames - 1;
-        }
-        if (vpad.trigger & VPAD_BUTTON_LEFT) {
-            frameActual -= 30; 
-            if (frameActual < 0) frameActual = 0;
-        }
+        if (vpad.trigger & VPAD_BUTTON_RIGHT) { frameActual += 30; if (frameActual >= totalFrames) frameActual = totalFrames - 1; }
+        if (vpad.trigger & VPAD_BUTTON_LEFT) { frameActual -= 30; if (frameActual < 0) frameActual = 0; }
 
         if (!pausado) {
             frameActual++;
-            if (frameActual >= totalFrames) {
-                frameActual = 0; 
-                pausado = true;
-            }
+            if (frameActual >= totalFrames) { frameActual = 0; pausado = true; }
         }
 
         long offsetFrame = moviOffset + (frameActual * (long)(VID_SIZE + 8)) + 8; 
         fseek(f, offsetFrame, SEEK_SET);
         fread(pixelBuffer, 1, VID_SIZE, f);
 
-        for(int i=0; i<VID_W*VID_H; i++) {
-            uint32_t p = pixelBuffer[i]; 
-            uint32_t b = (p >> 24) & 0xFF;
-            uint32_t g = (p >> 16) & 0xFF;
-            uint32_t r = (p >> 8) & 0xFF;
-            uint32_t a = p & 0xFF; 
-            pixelBuffer[i] = (0xFF << 24) | (r << 16) | (g << 8) | b; 
-        }
-
+        // --- SIN MODIFICAR COLORES (RAW COPY) ---
+        // Quitamos el bucle for de intercambio.
+        
         SDL_UpdateTexture(videoTex, NULL, pixelBuffer, VID_W * 4);
 
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
 
         SDL_Rect rVid = { (1280 - 960)/2, (720 - 720)/2, 960, 720 }; 
-        SDL_RenderCopy(renderer, videoTex, NULL, &rVid);
-
-        int barraY = 600;
-        int barraW = 800;
-        int barraX = (1280 - barraW) / 2;
         
-        SDL_SetRenderDrawColor(renderer, 100, 100, 100, 150);
-        SDL_Rect rBarBg = {barraX, barraY, barraW, 10};
-        SDL_RenderFillRect(renderer, &rBarBg);
+        // --- SOLO FLIP VERTICAL ---
+        SDL_RenderCopyEx(renderer, videoTex, NULL, &rVid, 0, NULL, SDL_FLIP_VERTICAL);
 
+        int barraY = 600; int barraW = 800; int barraX = (1280 - barraW) / 2;
+        SDL_SetRenderDrawColor(renderer, 100, 100, 100, 150);
+        SDL_Rect rBarBg = {barraX, barraY, barraW, 10}; SDL_RenderFillRect(renderer, &rBarBg);
         int progresoW = (frameActual * barraW) / totalFrames;
         SDL_SetRenderDrawColor(renderer, 255, 0, 0, 200);
-        SDL_Rect rBarProg = {barraX, barraY, progresoW, 10};
-        SDL_RenderFillRect(renderer, &rBarProg);
-
+        SDL_Rect rBarProg = {barraX, barraY, progresoW, 10}; SDL_RenderFillRect(renderer, &rBarProg);
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-        SDL_Rect rKnob = {barraX + progresoW - 8, barraY - 5, 16, 20};
-        SDL_RenderFillRect(renderer, &rKnob);
+        SDL_Rect rKnob = {barraX + progresoW - 8, barraY - 5, 16, 20}; SDL_RenderFillRect(renderer, &rKnob);
 
         SDL_Color col = {255, 255, 255, 255};
-        const char* txt = esIngles ? "(A) Pause  (< >) Seek  (B) Back" : "(A) Pausa  (< >) Mover  (B) Salir";
+        const char* txt = esIngles ? "(A) Pause  (< >) Seek  (B) Exit" : "(A) Pausa  (< >) Mover  (B) Salir";
         SDL_Surface* sT = TTF_RenderText_Blended(font, txt, col);
         if (sT) {
             SDL_Texture* tT = SDL_CreateTextureFromSurface(renderer, sT);
             SDL_Rect rT = {(1280 - sT->w)/2, 630, sT->w, sT->h};
-            
             SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
             SDL_SetRenderDrawColor(renderer, 0,0,0, 150);
             SDL_Rect rTBg = {rT.x-10, rT.y-5, rT.w+20, rT.h+10};
             SDL_RenderFillRect(renderer, &rTBg);
             SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
-
             SDL_RenderCopy(renderer, tT, NULL, &rT);
             SDL_FreeSurface(sT); SDL_DestroyTexture(tT);
         }
@@ -269,13 +241,9 @@ int EjecutarGaleria(SDL_Renderer* renderer, TTF_Font* font, bool esIngles) {
 
         if (vpad.trigger & VPAD_BUTTON_A && !g_listaMedia.empty()) {
             ArchivoMedia& item = g_listaMedia[g_itemSeleccionado];
-            if (item.esVideo) {
-                ReproducirVideoAVI(renderer, font, item.rutaCompleta, esIngles);
-            } else {
-                VerFoto(renderer, font, item.rutaCompleta, esIngles);
-            }
-            SDL_SetRenderDrawColor(renderer, 20, 20, 40, 255);
-            SDL_RenderClear(renderer);
+            if (item.esVideo) ReproducirVideoAVI(renderer, font, item.rutaCompleta, esIngles);
+            else VerFoto(renderer, font, item.rutaCompleta, esIngles);
+            SDL_SetRenderDrawColor(renderer, 20, 20, 40, 255); SDL_RenderClear(renderer);
         }
 
         if (delayInput > 0) delayInput--;
@@ -286,8 +254,7 @@ int EjecutarGaleria(SDL_Renderer* renderer, TTF_Font* font, bool esIngles) {
             if (vpad.hold & VPAD_BUTTON_UP) { if (g_itemSeleccionado - columnas >= 0) g_itemSeleccionado -= columnas; delayInput = 10; }
         }
 
-        SDL_SetRenderDrawColor(renderer, 20, 20, 40, 255);
-        SDL_RenderClear(renderer);
+        SDL_SetRenderDrawColor(renderer, 20, 20, 40, 255); SDL_RenderClear(renderer);
 
         SDL_Color colTitulo = {255, 255, 0, 255};
         SDL_Surface* sTit = TTF_RenderText_Blended(font, esIngles ? "Gallery" : "Galeria", colTitulo);
@@ -298,8 +265,7 @@ int EjecutarGaleria(SDL_Renderer* renderer, TTF_Font* font, bool esIngles) {
 
         int panelX = 900; 
         SDL_SetRenderDrawColor(renderer, 50, 50, 70, 255);
-        SDL_Rect rPanel = {panelX, 100, 350, 500};
-        SDL_RenderFillRect(renderer, &rPanel);
+        SDL_Rect rPanel = {panelX, 100, 350, 500}; SDL_RenderFillRect(renderer, &rPanel);
         
         SDL_Color cW = {255, 255, 255, 255};
         if (esIngles) {

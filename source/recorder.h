@@ -16,7 +16,7 @@
 #define REC_ANCHO 640
 #define REC_ALTO  480
 #define REC_PITCH 768 
-#define MAX_FRAMES 120 // ~4 Segundos
+#define MAX_FRAMES 120 
 
 struct VideoManager {
     uint32_t* granBufferRAM; 
@@ -40,7 +40,6 @@ static void CallbackRecorder(CAMEventData *evento) {
     if (evento->eventType == CAMERA_DECODE_DONE) recFrameListo = true;
 }
 
-// --- UTILIDADES ---
 void EscribirIntLE(FILE* f, uint32_t valor) {
     uint32_t le = ((valor >> 24) & 0xFF) | ((valor >> 8) & 0xFF00) | ((valor << 8) & 0xFF0000) | ((valor << 24) & 0xFF000000);
     fwrite(&le, 4, 1, f);
@@ -51,7 +50,6 @@ void EscribirShortLE(FILE* f, uint16_t valor) {
 }
 void Escribir4Chars(FILE* f, const char* s) { fwrite(s, 1, 4, f); }
 
-// Cabecera AVI Standard (Se escribe una sola vez al inicio)
 void EscribirCabeceraAVI(FILE* f, int frames, int ancho, int alto) {
     uint32_t frameSize = ancho * alto * 4;
     uint32_t dataSize = (frameSize + 8) * frames; 
@@ -63,8 +61,7 @@ void EscribirCabeceraAVI(FILE* f, int frames, int ancho, int alto) {
     Escribir4Chars(f, "avih"); EscribirIntLE(f, 56);       
     EscribirIntLE(f, 33333); 
     EscribirIntLE(f, frameSize * 30); 
-    EscribirIntLE(f, 0); 
-    EscribirIntLE(f, 0x10); 
+    EscribirIntLE(f, 0); EscribirIntLE(f, 0x10); 
     EscribirIntLE(f, frames); EscribirIntLE(f, 0); EscribirIntLE(f, 1); EscribirIntLE(f, frameSize);
     EscribirIntLE(f, ancho); EscribirIntLE(f, alto); 
     EscribirIntLE(f, 0); EscribirIntLE(f, 0); EscribirIntLE(f, 0); EscribirIntLE(f, 0); 
@@ -130,7 +127,6 @@ ContextoRecorder IniciarGrabadoraContexto(SDL_Renderer* renderer) {
 
 void CerrarGrabadoraContexto(ContextoRecorder* ctx) {
     if (ctx->exito) { 
-        // CAMStop ELIMINADO PORQUE NO EXISTE
         CAMClose(ctx->handle); 
         CAMExit(ctx->handle); 
     }
@@ -142,13 +138,6 @@ void CerrarGrabadoraContexto(ContextoRecorder* ctx) {
 }
 
 void GuardarVideoAVI(SDL_Renderer* renderer, VideoManager* vm, TTF_Font* font) {
-    const char* rutaBase = "fs:/vol/external01/WiiUCamera Files";
-    mkdir(rutaBase, 0777);
-    
-    time_t t = time(NULL);
-    char nombreArchivo[256];
-    sprintf(nombreArchivo, "%s/Video_%ld.avi", rutaBase, (long)t);
-
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
     SDL_Color colorTexto = {255, 255, 0, 255};
@@ -159,36 +148,33 @@ void GuardarVideoAVI(SDL_Renderer* renderer, VideoManager* vm, TTF_Font* font) {
     SDL_RenderPresent(renderer);
     SDL_FreeSurface(txtSurf); SDL_DestroyTexture(txtTex);
 
+    time_t t = time(NULL);
+    char nombreArchivo[256];
+    sprintf(nombreArchivo, "fs:/vol/external01/WiiUCamera Files/Video_%ld.avi", (long)t);
+
     FILE* f = fopen(nombreArchivo, "wb");
     if (f) {
         EscribirCabeceraAVI(f, vm->framesCapturados, REC_ANCHO, REC_ALTO);
         
         uint32_t tamanoFrame = REC_ANCHO * REC_ALTO * 4;
-        // OPTIMIZACIÓN: Buffer temporal para escritura rápida
         uint32_t* frameBuffer = (uint32_t*)malloc(tamanoFrame);
 
         if (frameBuffer) {
             for(int i=0; i < vm->framesCapturados; i++) {
                  Escribir4Chars(f, "00db"); EscribirIntLE(f, tamanoFrame);
-                 
                  uint32_t* ptrFrameStart = vm->granBufferRAM + (i * (REC_ANCHO * REC_ALTO));
-                 
-                 // Procesamos en RAM
                  int idx = 0;
                  for (int y = REC_ALTO - 1; y >= 0; y--) { 
                      uint32_t* ptrLinea = ptrFrameStart + (y * REC_ANCHO);
                      for (int x = 0; x < REC_ANCHO; x++) {
                          uint32_t pixelOriginal = ptrLinea[x];
-                         // Swap RGBA -> BGRA
                          uint32_t r = (pixelOriginal >> 24) & 0xFF;
                          uint32_t g = (pixelOriginal >> 16) & 0xFF;
                          uint32_t b = (pixelOriginal >> 8) & 0xFF;
                          uint32_t a = pixelOriginal & 0xFF;
-                         
                          frameBuffer[idx++] = (b << 24) | (g << 16) | (r << 8) | a;
                      }
                  }
-                 // Escribimos todo de golpe
                  fwrite(frameBuffer, 1, tamanoFrame, f);
             }
             free(frameBuffer);
@@ -275,6 +261,7 @@ int EjecutarGrabadora(SDL_Renderer* renderer, TTF_Font* font, bool esIngles) {
         SDL_RenderClear(renderer);
         if (ctx.textura) SDL_RenderCopy(renderer, ctx.textura, NULL, &destinoRect);
         
+        // --- INTERFAZ UI CORREGIDA (Derecha) ---
         if (vm.grabando) {
             static int blink = 0; blink++;
             if ((blink / 10) % 2 == 0) {
@@ -282,18 +269,28 @@ int EjecutarGrabadora(SDL_Renderer* renderer, TTF_Font* font, bool esIngles) {
                 SDL_Rect recDot = {1100, 50, 30, 30};
                 SDL_RenderFillRect(renderer, &recDot);
             }
-            int barraW = (vm.framesCapturados * 280) / MAX_FRAMES;
+            int barraW = (vm.framesCapturados * 280) / MAX_FRAMES; 
             SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
             SDL_Rect barra = {980, 100, barraW, 20};
             SDL_RenderFillRect(renderer, &barra);
+            
             DibujarInfoLateral(renderer, font, "REC...", 130);
+            if (esIngles) DibujarInfoLateral(renderer, font, "Press B: Stop/Save", 170);
+            else DibujarInfoLateral(renderer, font, "Presiona B: Guardar", 170);
+
         } else {
              if (esIngles) {
-                DibujarInfoLateral(renderer, font, "Mode: Video", 50);
-                DibujarInfoLateral(renderer, font, "Press A to REC", 100);
+                DibujarInfoLateral(renderer, font, "Mode: AVI Video", 50);
+                DibujarInfoLateral(renderer, font, "(A) Start REC", 100);
+                DibujarInfoLateral(renderer, font, "(B) Exit Mode", 140);
+                DibujarInfoLateral(renderer, font, "Max: 3.5 sec", 220);
+                DibujarInfoLateral(renderer, font, "File: >100 MB", 260);
              } else {
-                DibujarInfoLateral(renderer, font, "Modo: Video", 50);
-                DibujarInfoLateral(renderer, font, "Presiona A: REC", 100);
+                DibujarInfoLateral(renderer, font, "Modo: Video AVI", 50);
+                DibujarInfoLateral(renderer, font, "(A) Iniciar REC", 100);
+                DibujarInfoLateral(renderer, font, "(B) Salir Modo", 140);
+                DibujarInfoLateral(renderer, font, "Max: 3.5 seg", 220);
+                DibujarInfoLateral(renderer, font, "Archivo: >100MB", 260);
              }
         }
         SDL_RenderPresent(renderer);
