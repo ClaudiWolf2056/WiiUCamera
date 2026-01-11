@@ -41,7 +41,7 @@ Due to a limitation in the current SDL2 audio drivers for Wii U, the application
 
 ¡Una aplicación de cámara nativa para la Nintendo Wii U! Toma fotos, graba videos, aplica filtros y visualiza tu galería directamente en el GamePad.
 
-### ⚠️ ERROR CONOCIDO: AL SALIR (IMPORTANTE)
+### ⚠️ ERROR AL SALIR (IMPORTANTE)
 **Por favor lee antes de usar:**
 Debido a una limitación en los drivers de audio (SDL2) actuales de Wii U, la aplicación **puede quedarse cargando** al intentar salir (botón Home o Salir).
 * **Solución:** Si la consola se queda cargando, simplemente **mantén presionado el botón POWER de la consola durante 4 segundos** para forzar el apagado.
