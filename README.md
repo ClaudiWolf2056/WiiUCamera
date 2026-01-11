@@ -11,8 +11,8 @@ A native camera application for the Nintendo Wii U! Take photos, record videos, 
 
 ### ⚠️ KNOWN ISSUE: EXIT BUG (IMPORTANT)
 **Please read before use:**
-Due to a limitation in the current SDL2 audio drivers for Wii U, the application **may freeze on a white screen** when you try to exit (via the Home button or "Exit" option).
-* **Solution:** If the console hangs, simply **hold the POWER button on the console for 4 seconds** to force a shutdown.
+Due to a limitation in the current SDL2 audio drivers for Wii U, the application may get stuck loading when attempting to exit (using the Home button or the "Exit" option).
+**Solution:** If it doesn't return to the Wii U Menu, simply press and hold the Power button for 4 seconds to force it to shut down.
 * **Safety:** This is a safe procedure and **will not harm your console or corrupt your SD card data**.
 
 ### ✨ Features
