@@ -93,8 +93,7 @@ Main Developer: ClaudiWolf2056
 
 Libraries: devkitPro, WUT, SDL2 for Wii U.
 
-🌟 Special Thanks
-Special thanks to whateveritwas for:
+🌟 Special thanks to whateveritwas for:
 Providing the crucial code for the exit logic.
 (You can find them and follow their projects on GitHub).
 
@@ -185,8 +184,7 @@ Desarrollador principal: ClaudiWolf2056
 
 Bibliotecas: devkitPro, WUT, SDL2 para Wii U.
 
-🌟 Agradecimientos especiales
-Agradecimientos especiales a Whateveritwas por:
+🌟 Agradecimientos especiales a whateveritwas por:
 Proporcionar el código crucial para la lógica de salida.
 (Puedes encontrarlos y seguir sus proyectos en GitHub).
 
