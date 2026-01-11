@@ -4,6 +4,12 @@
 #include <SDL2/SDL_mixer.h> 
 #include <vpad/input.h>
 #include <coreinit/foreground.h>
+
+#include <whb/proc.h>       
+#include <whb/log.h>
+#include <whb/log_console.h>
+#include <whb/gfx.h>
+
 #include <unistd.h>
 #include <vector>
 #include <string>
@@ -15,7 +21,7 @@
 #include "camera_effects.h" 
 #include "gallery.h" 
 
-const char* APP_VERSION = "v1.1.6";
+const char* APP_VERSION = "v1.1.8 (Beta)";
 
 enum EstadoApp {
     ESTADO_MENU_PRINCIPAL,
@@ -32,6 +38,8 @@ Mix_Chunk* g_SfxSelect = NULL;
 
 void IniciarAudio() {
     if (Mix_OpenAudio(48000, MIX_DEFAULT_FORMAT, 2, 2048) < 0) return;
+    
+    // Rutas apuntando a tu carpeta "fs" empaquetada
     g_MusicaFondo = Mix_LoadMUS("/vol/content/music.mp3"); 
     g_SfxMove = Mix_LoadWAV("/vol/content/move.wav");
     g_SfxSelect = Mix_LoadWAV("/vol/content/select.wav");
@@ -43,19 +51,36 @@ void IniciarAudio() {
     Mix_Volume(-1, 64); 
 }
 
+void CerrarAudio() {
+    Mix_HaltMusic(); 
+    Mix_HaltChannel(-1);
+    if (g_SfxMove) Mix_FreeChunk(g_SfxMove);
+    if (g_SfxSelect) Mix_FreeChunk(g_SfxSelect);
+    if (g_MusicaFondo) Mix_FreeMusic(g_MusicaFondo);
+    Mix_CloseAudio();
+    Mix_Quit();
+}
+
 void ReproducirSonidoMover() { if (g_SfxMove) Mix_PlayChannel(-1, g_SfxMove, 0); }
 void ReproducirSonidoSelect() { if (g_SfxSelect) Mix_PlayChannel(-1, g_SfxSelect, 0); }
 
 SDL_Texture* CargarTextura(SDL_Renderer* renderer, const std::string& ruta) {
     SDL_Surface* superficie = IMG_Load(ruta.c_str());
-    if (!superficie) return nullptr;
+    if (!superficie) {
+        return nullptr;
+    }
     SDL_Texture* textura = SDL_CreateTextureFromSurface(renderer, superficie);
     SDL_FreeSurface(superficie);
     return textura;
 }
 
+
 void DibujarTextoCentrado(SDL_Renderer* renderer, TTF_Font* font, const char* texto, int y, SDL_Color color) {
-    if (!font) return;
+    if (!font) {
+        SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);
+        SDL_Rect r = { 300, y, 680, 40 }; SDL_RenderFillRect(renderer, &r);
+        return;
+    }
     SDL_Surface* surface = TTF_RenderText_Blended(font, texto, color);
     if (surface) {
         SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
@@ -67,7 +92,11 @@ void DibujarTextoCentrado(SDL_Renderer* renderer, TTF_Font* font, const char* te
 }
 
 void DibujarTextoConScroll(SDL_Renderer* renderer, TTF_Font* font, const char* texto, int x, int y, SDL_Color color) {
-    if (!font) return;
+    if (!font) {
+        SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);
+        SDL_Rect r = { x, y, 200, 20 }; SDL_RenderFillRect(renderer, &r);
+        return;
+    }
     SDL_Surface* surface = TTF_RenderText_Blended(font, texto, color);
     if (surface) {
         SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
@@ -92,12 +121,22 @@ bool VerificarToqueBoton(int touchX, int touchY, int btnX, int btnY, int btnW, i
 }
 
 void DibujarBotonCentrado(SDL_Renderer* renderer, SDL_Texture* texturaBoton, int centroX, int centroY, bool seleccionado, SDL_Rect* outRect) {
-    if (!texturaBoton) return;
-    int w, h;
-    SDL_QueryTexture(texturaBoton, NULL, NULL, &w, &h);
+    int w = 200, h = 100;
+
+    if (texturaBoton) {
+        SDL_QueryTexture(texturaBoton, NULL, NULL, &w, &h);
+    } 
+
     int x = centroX - (w / 2);
     int y = centroY - (h / 2);
     if (outRect) { outRect->x = x; outRect->y = y; outRect->w = w; outRect->h = h; }
+
+    if (!texturaBoton) {
+        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+        SDL_Rect r = { x, y, w, h };
+        SDL_RenderFillRect(renderer, &r);
+        return;
+    }
 
     SDL_Rect rectBoton = { x, y, w, h };
 
@@ -110,7 +149,12 @@ void DibujarBotonCentrado(SDL_Renderer* renderer, SDL_Texture* texturaBoton, int
     SDL_RenderCopy(renderer, texturaBoton, NULL, &rectBoton);
 }
 
+
+
 int main(int argc, char **argv) {
+    WHBProcInit();
+    WHBLogConsoleInit(); 
+    
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO); 
     TTF_Init();
     IMG_Init(IMG_INIT_PNG);
@@ -127,7 +171,11 @@ int main(int argc, char **argv) {
     TTF_Font* fuentePequena = TTF_OpenFont("/vol/content/font.ttf", 40);
     TTF_Font* fuenteMini = TTF_OpenFont("/vol/content/font.ttf", 24); 
 
+    if (!fuenteGrande) WHBLogPrintf("ERROR: No se encontro font.ttf");
+
     SDL_Texture* texBackground = CargarTextura(renderer, "/vol/content/background.png");
+    
+    // Botones
     SDL_Texture* texIniciar_ES = CargarTextura(renderer, "/vol/content/button_iniciar.png"); 
     SDL_Texture* texUpdates_ES = CargarTextura(renderer, "/vol/content/button_actualizaciones.png");
     SDL_Texture* texAgrade_ES = CargarTextura(renderer, "/vol/content/button_agradecimientos.png");
@@ -152,14 +200,14 @@ int main(int argc, char **argv) {
     SDL_Rect btnRects[5]; 
     int touchX = -100, touchY = -100;
     bool dedoPresionado = false;
-    
     float scrollY = 0;
 
-    while (appRunning) {
+    // 3. BUCLE PRINCIPAL
+    while (appRunning && WHBProcIsRunning()) {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) {
-                appRunning = false; // Romper bucle y salir
+                appRunning = false; 
             }
             else if (event.type == SDL_MOUSEMOTION) { touchX = event.motion.x; touchY = event.motion.y; }
             else if (event.type == SDL_MOUSEBUTTONDOWN) { dedoPresionado = true; touchX = event.button.x; touchY = event.button.y; }
@@ -171,7 +219,10 @@ int main(int argc, char **argv) {
 
         SDL_RenderClear(renderer);
         if (texBackground) SDL_RenderCopy(renderer, texBackground, NULL, NULL);
-        else { SDL_SetRenderDrawColor(renderer, 0, 0, 100, 255); SDL_RenderClear(renderer); }
+        else { 
+            SDL_SetRenderDrawColor(renderer, 0, 0, 50, 255); 
+            SDL_RenderClear(renderer); 
+        }
 
         if (delayInput > 0) delayInput--;
 
@@ -215,14 +266,8 @@ int main(int argc, char **argv) {
             }
 
             if (delayInput == 0) {
-                if (moverAbajo) {
-                    if (seleccion == 0) seleccion = 1; else if (seleccion == 1) seleccion = 3; else if (seleccion == 2) seleccion = 4;
-                    delayInput = VELOCIDAD_CURSOR; huboMovimiento = true;
-                }
-                if (moverArriba) {
-                    if (seleccion == 3) seleccion = 1; else if (seleccion == 4) seleccion = 2; else if (seleccion == 1 || seleccion == 2) seleccion = 0;
-                    delayInput = VELOCIDAD_CURSOR; huboMovimiento = true;
-                }
+                if (moverAbajo) { if (seleccion == 0) seleccion = 1; else if (seleccion == 1) seleccion = 3; else if (seleccion == 2) seleccion = 4; delayInput = VELOCIDAD_CURSOR; huboMovimiento = true; }
+                if (moverArriba) { if (seleccion == 3) seleccion = 1; else if (seleccion == 4) seleccion = 2; else if (seleccion == 1 || seleccion == 2) seleccion = 0; delayInput = VELOCIDAD_CURSOR; huboMovimiento = true; }
                 if (moverDer) { if (seleccion == 1) seleccion = 2; else if (seleccion == 3) seleccion = 4; delayInput = VELOCIDAD_CURSOR; huboMovimiento = true; }
                 if (moverIzq) { if (seleccion == 2) seleccion = 1; else if (seleccion == 4) seleccion = 3; delayInput = VELOCIDAD_CURSOR; huboMovimiento = true; }
 
@@ -265,15 +310,15 @@ int main(int argc, char **argv) {
             int startY = 220; int gap = 45; SDL_Color colTxt = colorBlanco;
             
             if (esIngles) {
-                DibujarTextoCentrado(renderer, fuentePequena, "v1.1.6 - Stable Beta", startY, colTxt);
+                DibujarTextoCentrado(renderer, fuentePequena, "v1.1.8 - Stable Beta", startY, colTxt);
                 DibujarTextoCentrado(renderer, fuenteMini, "- FIX: Inverted video orientation in Gallery", startY + gap*1.5, colTxt);
-                DibujarTextoCentrado(renderer, fuenteMini, "- FIX: App exit hang loop", startY + gap*2.5, colTxt);
+                DibujarTextoCentrado(renderer, fuenteMini, "- FIX: App exit crash", startY + gap*2.5, colTxt);
                 DibujarTextoCentrado(renderer, fuenteMini, "- NEW: Added instructions to camera modes", startY + gap*3.5, colTxt);
             } else {
-                DibujarTextoCentrado(renderer, fuentePequena, "v1.1.6 - Beta Estable", startY, colTxt);
+                DibujarTextoCentrado(renderer, fuentePequena, "v1.1.8 - Beta Estable", startY, colTxt);
                 DibujarTextoCentrado(renderer, fuenteMini, "- FIX: Orientacion de video invertida en Galeria", startY + gap*1.5, colTxt);
-                DibujarTextoCentrado(renderer, fuenteMini, "- FIX: Cuelgue al salir de la app", startY + gap*2.5, colTxt);
-                DibujarTextoCentrado(renderer, fuenteMini, "- NUEVO: Instrucciones en modos de camara", startY + gap*3.5, colTxt);
+                DibujarTextoCentrado(renderer, fuenteMini, "- FIX: Demora en regresar al menu arreglada", startY + gap*2.5, colTxt);
+                DibujarTextoCentrado(renderer, fuenteMini, "- NEW: Instrucciones en modos de camara", startY + gap*3.5, colTxt);
             }
             DibujarTextoCentrado(renderer, fuentePequena, esIngles ? "(Press B to return)" : "(Presiona B para volver)", 600, colorAmarillo);
             if (botonB) { estado = ESTADO_MENU_PRINCIPAL; delayInput = 30; }
@@ -286,9 +331,13 @@ int main(int argc, char **argv) {
 
             int contentY = 200 - scrollY;
             
+            // --- NUEVA LISTA DE CRÉDITOS ---
             const char* linesEN[] = {
                 "Created by: ClaudiWolf2056", "",
-                "Special Thanks to:", "Wii U Community (Latam)",
+                "Special Thanks to:", "whateveritwas",
+                "For providing part of his code", "for the exit logic of this app",
+                "You can also find him on Github", "",
+                "Wii U Community (Latam)",
                 "- p-anthoX", "- JEAN_PRETENDO", "- Santix Aldama", "",
                 "Facebook Users:", "Da****, Ro****", "Ce***, Ta**", "",
                 "Technical Help:", "ForTheUsers (4TU)", "My SD Card", "",
@@ -298,7 +347,10 @@ int main(int argc, char **argv) {
 
             const char* linesES[] = {
                 "Creado por: ClaudiWolf2056", "",
-                "Agradecimientos a:", "Comunidad Wii U (Latam)",
+                "Agradecimientos especiales a:", "whateveritwas",
+                "Por brindar una parte de su codigo", "para la logica de cierre de esta app",
+                "Tambien puedes encontrarlo en Github", "",
+                "Comunidad Wii U (Latam)",
                 "- p-anthoX", "- JEAN_PRETENDO", "- Santix Aldama", "",
                 "Interaccion de Facebook:", "Da****, Ro****", "Ce***, Ta**", "",
                 "Ayuda Tecnica:", "ForTheUsers (4TU)", "Mi tarjeta SD xd", "",
@@ -306,7 +358,7 @@ int main(int argc, char **argv) {
                 "Nos vemos pronto! - ClaudiWolf2056"
             };
 
-            const int lineCount = 20; 
+            const int lineCount = 23; 
             const char** lineasAUsar = esIngles ? linesEN : linesES;
 
             for(int i=0; i<lineCount; i++) {
@@ -365,9 +417,18 @@ int main(int argc, char **argv) {
         SDL_RenderPresent(renderer);
     }
 
+    CerrarAudio();
     
+    if (renderer) SDL_DestroyRenderer(renderer);
+    if (window) SDL_DestroyWindow(window);
+
     VPADShutdown();
-    exit(0); 
+    IMG_Quit();
+    TTF_Quit();
+    SDL_Quit();
+
+    WHBLogConsoleFree();
+    WHBProcShutdown();
     
     return 0;
 }
