@@ -1,4 +1,4 @@
-# 📸 WiiUCamera v1.1.8 (Beta)
+# 📸 WiiUCamera v1.2.0 (Beta)
 
 [English](#english) | [Español](#español)
 
@@ -9,10 +9,16 @@
 
 A Nintendo Wii U application that transforms your GamePad into a functional camera with recording capabilities, filters, and a gallery.
 
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/7d5e8f3c-4c79-4668-aebe-9adbeca3dd84" alt="WiiUCamera Menu" width="400">
+</p>
+
+
 ### ✨ Main Features
 * **📷 Photo Mode:** Take photographs and save them to the SD card.
 * **🎥 Video Mode:** Record video clips in AVI format (m-jpeg).
 * **✨ Effects:** Apply real-time filters to the camera feed.
+* **✏️ Photo Editor (NEW):** Draw, edit, and apply effects (Brightness, Contrast, B&W) to your photos.
 * **🖼️ Integrated Gallery:** View your photos and videos without leaving the application.
 * **🎵 Music & SFX:** Interface with background audio and sound effects.
 * **🇺🇸/🇪🇸 Multi-language:** Support for English and Spanish (changeable via the menu).
@@ -81,11 +87,16 @@ make
 
 Upon completion, you will get a WiiUCamera.wuhb file ready to use.
 
-📝 Changelog (v1.1.8)
-CRITICAL FIX: Solved the freeze issue when closing the application. Now uses libwhb logic (WHBProcInit/Shutdown) for a clean and instant exit.
-IMPROVEMENT: Resources (images/fonts) are now automatically packed inside the .wuhb file. Manual folder copying to SD is no longer necessary.
-FIX: Corrected inverted video orientation in the gallery (still has blue filter).
-NEW: Instructions added to camera modes.
+📝 Changelog (v1.2.0)
+- NEW: Effects Panel in Editor! Adjust Brightness, Contrast, and Black & White filter with ease.
+
+- FIX: Solved the image distortion issue when saving edited photos. Now saving is pixel-perfect and corruption-free.
+
+- FIX: Gallery Layout. Photos are now properly spaced and fit perfectly on the screen when viewed.
+
+- NEW: Added Delete (X) function in Gallery to remove unwanted files.
+
+- UI: Improved button clarity and layout in the Editor.
 
 🤝 Credits and Acknowledgements
 Main Developer: ClaudiWolf2056
@@ -102,10 +113,16 @@ Made with ❤️ for users who still use Wii U.
 ## 🇪🇸 Español
 Una aplicación para Nintendo Wii U que transforma tu GamePad en una cámara funcional con capacidad de grabación, filtros y galería.
 
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/cd1dd5c3-31a4-45ec-b9de-7371399268d4" alt="WiiUCamera Menu" width="400">
+</p>
+
+
 ### ✨ Características principales
 * **📷 Modo Foto:** Toma fotos y guárdalas en la tarjeta SD.
 * **🎥 Modo Vídeo:** Graba videoclips en formato AVI (m-jpeg).
 * **✨ Efectos:** Aplica filtros en tiempo real a la señal de la cámara.
+* **✏️ Editor de Fotos (NUEVO): Dibuja, edita y aplica efectos (Brillo, Contraste, Blanco y Negro) a tus fotos.
 * **🖼️ Galería integrada:** Ve tus fotos y vídeos sin salir de la aplicación.
 * **🎵 Música y efectos de sonido:** Interfaz con audio de fondo y efectos de sonido.
 * **🇪🇸/🇪🇸 Multiidioma:** Disponible en inglés y español (cambiable desde el menú).
@@ -172,10 +189,17 @@ make
 
 Al finalizar, obtendrás el archivo WiiUCamera.wuhb listo para usar.
 
-📝 Registro de cambios (v1.1.8)
-CORRECCIÓN CRÍTICA: Se solucionó el problema de congelamiento al cerrar la aplicación. Ahora usa la lógica de libwhb (WHBProcInit/Shutdown) para una salida limpia e instantánea.
-MEJORA: Los recursos (imágenes/fuentes) ahora se empaquetan automáticamente dentro del archivo .wuhb. Ya no es necesario copiar manualmente la carpeta a la tarjeta SD. SOLUCIÓN: Se corrigió la orientación invertida del video en la galería (aún tiene filtro azul).
-NUEVO: Se añadieron instrucciones a los modos de cámara.
+📝 Registro de cambios (v1.2.0)
+
+- NUEVO: Panel de Efectos en el Editor. Ajusta Brillo, Contraste y filtro Blanco y Negro fácilmente.
+
+- CORRECCIÓN: Se solucionó la distorsión inclinada al guardar fotos editadas. Ahora el guardado es píxel-perfecto y sin corrupción.
+
+- CORRECCIÓN: Diseño de Galería. Las fotos ahora tienen el espaciado correcto y se ajustan perfectamente a la pantalla al visualizarlas.
+
+- NUEVO: Añadida función Eliminar (X) en la Galería para borrar archivos no deseados.
+
+- UI: Mejora en la claridad y disposición de los botones del Editor.
 
 🤝 Créditos y agradecimientos
 Desarrollador principal: ClaudiWolf2056
