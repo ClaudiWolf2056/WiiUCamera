@@ -14,14 +14,13 @@
 #include <time.h>
 #include <math.h> 
 
-// --- CONSTANTES HD ---
 const int GP_W = 1280;
 const int GP_H = 720;
 const int BARRA_W = 150;
 const int LIENZO_W = GP_W - BARRA_W;
 const int LIENZO_H = GP_H;
 
-// Paleta
+
 SDL_Color g_Paleta[] = {
     {0,0,0,255},       {255,255,255,255}, {128,128,128,255},
     {255,0,0,255},     {0,255,0,255},     {0,0,255,255},
@@ -45,7 +44,7 @@ int MapEdit(float val, float min, float max, float outMax, bool inv) {
     return (int)(pct * outMax);
 }
 
-// Utiles
+
 Uint8 clamp255(int v) {
     if (v < 0) return 0;
     if (v > 255) return 255;
@@ -62,7 +61,7 @@ void DibujarBarraEditor(SDL_Renderer* renderer, TTF_Font* font, bool esSelector)
     SDL_Color cTxt = {255, 255, 255, 255}; 
     char texto[200];
     
-    // --- CAMBIO SOLICITADO: TEXTOS MAS LIMPIOS ---
+
     if (esSelector) sprintf(texto, "(A) Select   (Stick) Move");
     else sprintf(texto, "(Touch) Edit   (B) Exit");
 
@@ -75,7 +74,7 @@ void DibujarBarraEditor(SDL_Renderer* renderer, TTF_Font* font, bool esSelector)
     }
 }
 
-// --- EL MINION (RAM WRITER) ---
+
 void PutPixelRAM(SDL_Surface *surface, int x, int y, Uint32 pixel) {
     if (x < 0 || x >= surface->w || y < 0 || y >= surface->h) return;
     int bpp = surface->format->BytesPerPixel;
@@ -83,7 +82,7 @@ void PutPixelRAM(SDL_Surface *surface, int x, int y, Uint32 pixel) {
     *(Uint32 *)p = pixel;
 }
 
-// Dibuja en GPU (pantalla) y en RAM (Minion) a la vez
+
 void DibujarTrazoDual(SDL_Renderer* renderer, SDL_Surface* surfaceRAM, int x1, int y1, int x2, int y2, int radio, SDL_Color color) {
     SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
     Uint32 pixelRAM = SDL_MapRGBA(surfaceRAM->format, color.r, color.g, color.b, color.a);
@@ -105,7 +104,7 @@ void DibujarTrazoDual(SDL_Renderer* renderer, SDL_Surface* surfaceRAM, int x1, i
     }
 }
 
-// --- LOGICA DE EFECTOS ---
+
 void AplicarEfectoColor(SDL_Surface* surface, int tipo) {
     if (!surface) return;
     if (SDL_LockSurface(surface) < 0) return;
@@ -138,9 +137,9 @@ void AplicarEfectoColor(SDL_Surface* surface, int tipo) {
     SDL_UnlockSurface(surface);
 }
 
-// --- GUARDADO MINION MANUAL ---
+
 void GuardarMinionManual(SDL_Renderer* renderer, SDL_Surface* surfaceRAM, TTF_Font* font, bool esIngles) {
-    // Feedback
+
     SDL_SetRenderTarget(renderer, NULL);
     SDL_SetRenderDrawColor(renderer, 0,0,0,200);
     SDL_Rect rBox = {340, 310, 600, 100}; SDL_RenderFillRect(renderer, &rBox);
@@ -156,7 +155,7 @@ void GuardarMinionManual(SDL_Renderer* renderer, SDL_Surface* surfaceRAM, TTF_Fo
     SDL_RenderCopy(renderer, tT, NULL, &rT); SDL_RenderPresent(renderer);
     SDL_FreeSurface(sT); SDL_DestroyTexture(tT);
 
-    // BMP
+
     int w = surfaceRAM->w; int h = surfaceRAM->h;
     time_t t = time(NULL); int r = rand() % 1000;
     char filename[256]; sprintf(filename, "fs:/vol/external01/WiiUCamera Files/EDIT_%ld_%03d.bmp", t, r);
@@ -289,11 +288,11 @@ void EjecutarEditor(SDL_Renderer* renderer, TTF_Font* font, bool esIngles) {
 
     SDL_Surface* surfOrig = IMG_Load(ruta.c_str()); if (!surfOrig) return;
     
-    // --- MINION SETUP (RGBA8888 Forzado) ---
+
     SDL_Texture* texLienzo = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 1280, 720);
     SDL_Surface* surfMinion = SDL_CreateRGBSurfaceWithFormat(0, 1280, 720, 32, SDL_PIXELFORMAT_RGBA8888);
     
-    // Inicializar
+
     SDL_SetRenderTarget(renderer, texLienzo);
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); SDL_RenderClear(renderer); 
     float ratio = (float)surfOrig->w / (float)surfOrig->h;
@@ -303,7 +302,7 @@ void EjecutarEditor(SDL_Renderer* renderer, TTF_Font* font, bool esIngles) {
     
     SDL_Texture* tempTex = SDL_CreateTextureFromSurface(renderer, surfOrig);
     SDL_RenderCopy(renderer, tempTex, NULL, &rFoto);
-    // Pintamos la foto original en el Minion (RAM)
+
     SDL_BlitScaled(surfOrig, NULL, surfMinion, &rFoto);
     
     SDL_DestroyTexture(tempTex); SDL_FreeSurface(surfOrig);
@@ -345,7 +344,7 @@ void EjecutarEditor(SDL_Renderer* renderer, TTF_Font* font, bool esIngles) {
         } else { g_lastX = -1; g_lastY = -1; }
 
         if (tocando) {
-            // 1. PALETA COLOR
+  
             if (mostrarPaleta) {
                 int palX = LIENZO_W - 220; int palY = 50;
                 if (tx >= palX && tx <= palX + 200 && ty >= palY && ty <= palY + 270) {
@@ -358,12 +357,12 @@ void EjecutarEditor(SDL_Renderer* renderer, TTF_Font* font, bool esIngles) {
                     }
                 } else { mostrarPaleta = false; }
             }
-            // 2. POPUP EFECTOS
+     
             else if (mostrarEfectos) {
                 int fxX = LIENZO_W - 280; int fxY = 100; 
                 if (tx >= fxX && tx <= fxX + 260 && ty >= fxY && ty <= fxY + 400) {
                     int efectoElegido = 0;
-                    // B+ B- C+ C- BW
+          
                     if (ty > fxY+30 && ty < fxY+70) efectoElegido = (tx < fxX + 130) ? 2 : 1;
                     else if (ty > fxY+90 && ty < fxY+130) efectoElegido = (tx < fxX + 130) ? 4 : 3;
                     else if (ty > fxY+150 && ty < fxY+190) efectoElegido = 5;
@@ -392,7 +391,7 @@ void EjecutarEditor(SDL_Renderer* renderer, TTF_Font* font, bool esIngles) {
                 }
                 else if (ty > 550) { GuardarMinionManual(renderer, surfMinion, font, esIngles); SDL_Delay(1000); editando = false; }
             }
-            // 4. DIBUJAR
+
             else if (herramientaPincel && !mostrarPaleta && !mostrarEfectos) {
                 if (g_lastX != -1) {
                     SDL_SetRenderTarget(renderer, texLienzo); 
@@ -458,5 +457,6 @@ void EjecutarEditor(SDL_Renderer* renderer, TTF_Font* font, bool esIngles) {
     if (iconUndo) SDL_DestroyTexture(iconUndo); if (iconFx) SDL_DestroyTexture(iconFx);
     SDL_DestroyTexture(texLienzo); SDL_FreeSurface(surfMinion);
 }
+
 
 #endif
