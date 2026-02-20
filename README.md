@@ -93,16 +93,16 @@ make
 
 Upon completion, you will get a WiiUCamera.wuhb file ready to use.
 
-📝 Changelog (v1.2.0)
-- NEW: Fixed overlapping text in Info screens (Webcam/Chroma) and adjusted titles to fit the background better.
+📝 Changelog (v1.3.2)
+- NEW: Main Menu Redesign. Bigger buttons, cleaner look, and integrated "Welcome" text.
 
-- FIX: Solved the image distortion issue when saving edited photos. Now saving is pixel-perfect and corruption-free.
+- FIX: Aggregation of experimental phases.
 
 - NEW: Main Menu Redesign. Bigger buttons, cleaner look, and integrated "Welcome" text.
 
-- FIX: Gallery Layout. Photos are now properly spaced and fit perfectly on the screen when viewed.
+- NEW: Configuration system from the main menu
 
-- NEW: Added Delete (X) function in Gallery to remove unwanted files.
+- NEW: Zoom and Movement when viewing a photo in the gallery
 
 - UI: Improved button clarity and layout in the Editor.
 
@@ -200,17 +200,18 @@ make
 
 Al finalizar, obtendrás el archivo WiiUCamera.wuhb listo para usar.
 
-📝 Registro de cambios (v1.2.0)
+📝 Registro de cambios (v1.3.2)
+- NUEVO: Rediseño del menú principal. Botones más grandes, diseño más limpio y texto de "Bienvenida" integrado.
 
-- NUEVO: Rediseño del Menú Principal. Botones más grandes, mejor distribución y texto de bienvenida integrado.
+- CORRECCIÓN: Agregación de fases experimentales.
 
-- CORRECCIÓN: Se solucionó la distorsión inclinada al guardar fotos editadas. Ahora el guardado es píxel-perfecto y sin corrupción.
+- NUEVO: Rediseño del menú principal. Botones más grandes, diseño más limpio y texto de "Bienvenida" integrado.
 
-- CORRECCIÓN: Diseño de Galería. Las fotos ahora tienen el espaciado correcto y se ajustan perfectamente a la pantalla al visualizarlas.
+- NUEVO: Sistema de configuración desde el menú principal
 
-- NUEVO: Añadida función Eliminar (X) en la Galería para borrar archivos no deseados.
+- NUEVO: Zoom y movimiento al ver una foto en la galería
 
-- UI: Mejora en la claridad y disposición de los botones del Editor.
+- Interfaz de usuario: Se mejoró la claridad y el diseño de los botones en el editor.
 
 🤝 Créditos y agradecimientos
 Desarrollador principal: ClaudiWolf2056
