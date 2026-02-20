@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <sys/stat.h>
+#include <string> // Necesario para std::to_string
 
 #define CAM_WIDTH 640
 #define CAM_HEIGHT 480
@@ -187,6 +188,13 @@ int EjecutarCamara(SDL_Renderer* renderer, TTF_Font* font, bool esIngles) {
     camFrameListo = false;
     int frameFlash = 0;
 
+    // --- VARIABLES TEMPORIZADOR ---
+    int timerMode = 0; // 0=OFF, 1=2s, 2=5s, 3=10s
+    int timerValues[] = {0, 2, 5, 10};
+    bool isCounting = false;
+    Uint32 countStartTime = 0;
+    int delayInput = 0;
+
     while (enCamara) {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
@@ -195,13 +203,37 @@ int EjecutarCamara(SDL_Renderer* renderer, TTF_Font* font, bool esIngles) {
         VPADStatus vpad; VPADReadError err;
         VPADRead(VPAD_CHAN_0, &vpad, 1, &err);
 
-        if (vpad.trigger & VPAD_BUTTON_B) { enCamara = false; resultado = 1; }
-        
-        if (vpad.trigger & VPAD_BUTTON_A) {
-            GuardarFotoNormalRapido(renderer, font, &ctx);
-            frameFlash = 5; 
+        if (delayInput > 0) delayInput--;
+
+        // LOGICA DE BOTONES
+        if (!isCounting) {
+            if (vpad.trigger & VPAD_BUTTON_B) { enCamara = false; resultado = 1; }
+            
+            // CAMBIAR TEMPORIZADOR CON (Y)
+            if ((vpad.trigger & VPAD_BUTTON_Y) && delayInput == 0) {
+                timerMode++;
+                if (timerMode > 3) timerMode = 0;
+                delayInput = 10;
+            }
+
+            // TOMAR FOTO CON (A)
+            if (vpad.trigger & VPAD_BUTTON_A) {
+                if (timerMode == 0) {
+                    // FOTO INSTANTANEA
+                    GuardarFotoNormalRapido(renderer, font, &ctx);
+                    frameFlash = 5; 
+                } else {
+                    // INICIAR CUENTA REGRESIVA
+                    isCounting = true;
+                    countStartTime = SDL_GetTicks();
+                }
+            }
+        } else {
+            // SI ESTA CONTANDO, PERMITIR CANCELAR CON B
+            if (vpad.trigger & VPAD_BUTTON_B) { isCounting = false; }
         }
 
+        // PROCESAR FRAME (Siempre activo para que se vea el movimiento)
         if (ctx.exito && camFrameListo) {
             DCInvalidateRange(ctx.rawBuffer, CAMERA_YUV_BUFFER_SIZE);
             ProcesarFrameCamara(&ctx);
@@ -217,23 +249,64 @@ int EjecutarCamara(SDL_Renderer* renderer, TTF_Font* font, bool esIngles) {
 
         SDL_Color col = {255, 255, 255, 255};
         
-        // --- UI ACTUALIZADA (Texto Lateral) ---
+        // --- UI ACTUALIZADA ---
         if (esIngles) {
              SDL_Surface* s1 = TTF_RenderText_Blended(font, "Mode: Photo", col);
              SDL_Surface* s2 = TTF_RenderText_Blended(font, "(A) Take Photo", col);
-             SDL_Surface* s3 = TTF_RenderText_Blended(font, "(B) Exit Mode", col);
+             
+             // MOSTRAR ESTADO TEMPORIZADOR
+             char bufTemp[32];
+             if(timerMode == 0) sprintf(bufTemp, "(Y) Timer: OFF");
+             else sprintf(bufTemp, "(Y) Timer: %ds", timerValues[timerMode]);
+             SDL_Surface* s3 = TTF_RenderText_Blended(font, bufTemp, {0, 255, 255, 255}); // Color Cian
+
+             SDL_Surface* s4 = TTF_RenderText_Blended(font, "(B) Exit Mode", col);
              
              if(s1){ SDL_Texture* t=SDL_CreateTextureFromSurface(renderer,s1); SDL_Rect r={980,50,s1->w,s1->h}; SDL_RenderCopy(renderer,t,NULL,&r); SDL_FreeSurface(s1); SDL_DestroyTexture(t); }
              if(s2){ SDL_Texture* t=SDL_CreateTextureFromSurface(renderer,s2); SDL_Rect r={980,100,s2->w,s2->h}; SDL_RenderCopy(renderer,t,NULL,&r); SDL_FreeSurface(s2); SDL_DestroyTexture(t); }
              if(s3){ SDL_Texture* t=SDL_CreateTextureFromSurface(renderer,s3); SDL_Rect r={980,150,s3->w,s3->h}; SDL_RenderCopy(renderer,t,NULL,&r); SDL_FreeSurface(s3); SDL_DestroyTexture(t); }
+             if(s4){ SDL_Texture* t=SDL_CreateTextureFromSurface(renderer,s4); SDL_Rect r={980,600,s4->w,s4->h}; SDL_RenderCopy(renderer,t,NULL,&r); SDL_FreeSurface(s4); SDL_DestroyTexture(t); }
         } else {
              SDL_Surface* s1 = TTF_RenderText_Blended(font, "Modo: Foto", col);
              SDL_Surface* s2 = TTF_RenderText_Blended(font, "(A) Tomar Foto", col);
-             SDL_Surface* s3 = TTF_RenderText_Blended(font, "(B) Salir Modo", col);
+             
+             char bufTemp[32];
+             if(timerMode == 0) sprintf(bufTemp, "(Y) Temp.: OFF");
+             else sprintf(bufTemp, "(Y) Temp.: %ds", timerValues[timerMode]);
+             SDL_Surface* s3 = TTF_RenderText_Blended(font, bufTemp, {0, 255, 255, 255});
+
+             SDL_Surface* s4 = TTF_RenderText_Blended(font, "(B) Salir Modo", col);
 
              if(s1){ SDL_Texture* t=SDL_CreateTextureFromSurface(renderer,s1); SDL_Rect r={980,50,s1->w,s1->h}; SDL_RenderCopy(renderer,t,NULL,&r); SDL_FreeSurface(s1); SDL_DestroyTexture(t); }
              if(s2){ SDL_Texture* t=SDL_CreateTextureFromSurface(renderer,s2); SDL_Rect r={980,100,s2->w,s2->h}; SDL_RenderCopy(renderer,t,NULL,&r); SDL_FreeSurface(s2); SDL_DestroyTexture(t); }
              if(s3){ SDL_Texture* t=SDL_CreateTextureFromSurface(renderer,s3); SDL_Rect r={980,150,s3->w,s3->h}; SDL_RenderCopy(renderer,t,NULL,&r); SDL_FreeSurface(s3); SDL_DestroyTexture(t); }
+             if(s4){ SDL_Texture* t=SDL_CreateTextureFromSurface(renderer,s4); SDL_Rect r={980,600,s4->w,s4->h}; SDL_RenderCopy(renderer,t,NULL,&r); SDL_FreeSurface(s4); SDL_DestroyTexture(t); }
+        }
+
+        // --- DIBUJAR CUENTA REGRESIVA ---
+        if (isCounting) {
+            Uint32 now = SDL_GetTicks();
+            int elapsed = (now - countStartTime) / 1000;
+            int remaining = timerValues[timerMode] - elapsed;
+
+            if (remaining <= 0) {
+                // TIEMPO CUMPLIDO -> FOTO
+                isCounting = false;
+                GuardarFotoNormalRapido(renderer, font, &ctx);
+                frameFlash = 5;
+            } else {
+                // MOSTRAR NUMERO GIGANTE
+                char numBuf[4]; sprintf(numBuf, "%d", remaining);
+                // Usamos el mismo font, pero lo escalamos visualmente o lo centramos
+                SDL_Surface* sNum = TTF_RenderText_Blended(font, numBuf, {255, 255, 0, 255});
+                if (sNum) {
+                    SDL_Texture* tNum = SDL_CreateTextureFromSurface(renderer, sNum);
+                    // Hacemos el numero grande (200x300 aprox)
+                    SDL_Rect rNum = {(960 - 200)/2, (720 - 300)/2, 200, 300}; 
+                    SDL_RenderCopy(renderer, tNum, NULL, &rNum);
+                    SDL_FreeSurface(sNum); SDL_DestroyTexture(tNum);
+                }
+            }
         }
 
         if (frameFlash > 0) {

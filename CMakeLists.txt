@@ -1,57 +1,70 @@
 cmake_minimum_required(VERSION 3.13)
 
-project(WiiUCamera C CXX ASM)
-
+# --- 1. TOOLCHAIN ---
 if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
-    set(CMAKE_TOOLCHAIN_FILE "$ENV{DEVKITPRO}/cmake/WiiU.cmake")
+    if(DEFINED ENV{DEVKITPRO})
+        set(CMAKE_TOOLCHAIN_FILE "$ENV{DEVKITPRO}/cmake/WiiU.cmake")
+    else()
+        message(FATAL_ERROR "Please set DEVKITPRO in your environment.")
+    endif()
 endif()
 
-# --- PARCHE: Cargar wut y whb correctamente ---
-set(WUT_SHARE_PATH "$ENV{DEVKITPRO}/wut/share/wut.cmake")
-if(EXISTS "${WUT_SHARE_PATH}")
-    include("${WUT_SHARE_PATH}")
-else()
-    message(FATAL_ERROR "No se encontro wut.cmake.")
-endif()
+project(WiiUCamera C CXX)
+include(${CMAKE_TOOLCHAIN_FILE})
 
-link_directories(
-    "$ENV{DEVKITPRO}/wut/lib"
-    "$ENV{DEVKITPRO}/portlibs/wiiu/lib"
-    "$ENV{DEVKITPRO}/portlibs/ppc/lib"
-)
+set(CMAKE_CXX_STANDARD 17)
 
-find_package(SDL2 REQUIRED)
-find_package(SDL2_image REQUIRED)
-find_package(SDL2_mixer REQUIRED)
-find_package(SDL2_ttf REQUIRED)
-
+# --- 2. RUTAS ---
 include_directories(
     source
-    ${SDL2_INCLUDE_DIRS}
-    ${SDL2_IMAGE_INCLUDE_DIRS}
-    ${SDL2_MIXER_INCLUDE_DIRS}
-    ${SDL2_TTF_INCLUDE_DIRS}
-    "$ENV{DEVKITPRO}/portlibs/wiiu/include"
-    "$ENV{DEVKITPRO}/portlibs/ppc/include"
+    $ENV{DEVKITPRO}/wut/include
+    $ENV{DEVKITPRO}/portlibs/wiiu/include
 )
 
-file(GLOB_RECURSE SOURCES "source/*.cpp" "source/*.c")
-
-add_executable(WiiUCamera ${SOURCES})
-
-target_link_libraries(WiiUCamera 
-    SDL2_image SDL2_mixer SDL2_ttf
-    SDL2::SDL2
-    freetype harfbuzz bz2 png jpeg
-    mpg123 modplug vorbisidec ogg
-    wut m z
+link_directories(
+    $ENV{DEVKITPRO}/wut/lib
+    $ENV{DEVKITPRO}/portlibs/wiiu/lib
 )
 
+# --- 3. FUENTES ---
+file(GLOB_RECURSE SOURCE_FILES "source/*.cpp" "source/*.h")
+
+# --- 4. EJECUTABLE (NOMBRE LIMPIO) ---
+# Antes era WiiUCamera.elf, ahora es solo WiiUCamera
+add_executable(WiiUCamera ${SOURCE_FILES})
+
+# --- 5. LIBRERIAS ---
+target_link_libraries(WiiUCamera
+    # Capa Superior (SDL)
+    -lSDL2_ttf
+    -lSDL2_mixer
+    -lSDL2_image
+    -lSDL2
+    
+    # Dependencias de TTF/Imagen
+    -lfreetype
+    -lharfbuzz
+    -lbz2
+    -lpng
+    -ljpeg
+    -lz
+    
+    # Dependencias de Audio
+    -lmpg123
+    -lmodplug
+    -lvorbisidec
+    -logg
+    
+    # Sistema
+    -lm
+    -lwut 
+)
+
+# --- 6. SALIDA ---
 wut_create_rpx(WiiUCamera)
-
 wut_create_wuhb(WiiUCamera
+    CONTENT content
     NAME "WiiUCamera"
     AUTHOR "ClaudiWolf2056"
-    CONTENT "fs" 
-    ICON "fs/icon.png" 
+    ICON content/icon.png
 )
