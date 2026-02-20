@@ -1,4 +1,4 @@
-# 📸 WiiUCamera v1.2.0 (Beta)
+# 📸 WiiUCamera v1.3.2 (Beta)
 
 [English](#english) | [Español](#español)
 
