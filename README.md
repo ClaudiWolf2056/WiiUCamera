@@ -13,10 +13,15 @@ A Nintendo Wii U application that transforms your GamePad into a functional came
   <img src="https://github.com/user-attachments/assets/7d5e8f3c-4c79-4668-aebe-9adbeca3dd84" alt="WiiUCamera Menu" width="400">
 </p>
 
+### ⚠️ Important Note regarding Tiramisu
+> **Tiramisu Support is currently a Work In Progress (WIP).**
+> I am currently encountering compilation errors when trying to adapt the app for Tiramisu. Since I do not personally have a Tiramisu environment, I am relying on community volunteers for testing and debugging. Please use **Aroma** for the best stable experience.
+
 
 ### ✨ Main Features
 * **📷 Photo Mode:** Take photographs and save them to the SD card.
 * **🎥 Video Mode:** Record video clips in AVI format (m-jpeg).
+* **👆 Touchscreen Support (NEW):** Navigate the entire UI using the GamePad touchscreen.
 * **✨ Effects:** Apply real-time filters to the camera feed.
 * **✏️ Photo Editor (NEW):** Draw, edit, and apply effects (Brightness, Contrast, B&W) to your photos.
 * **🖼️ Integrated Gallery:** View your photos and videos without leaving the application.
@@ -88,9 +93,11 @@ make
 Upon completion, you will get a WiiUCamera.wuhb file ready to use.
 
 📝 Changelog (v1.2.0)
-- NEW: Effects Panel in Editor! Adjust Brightness, Contrast, and Black & White filter with ease.
+- NEW: Fixed overlapping text in Info screens (Webcam/Chroma) and adjusted titles to fit the background better.
 
 - FIX: Solved the image distortion issue when saving edited photos. Now saving is pixel-perfect and corruption-free.
+
+- NEW: Main Menu Redesign. Bigger buttons, cleaner look, and integrated "Welcome" text.
 
 - FIX: Gallery Layout. Photos are now properly spaced and fit perfectly on the screen when viewed.
 
@@ -117,6 +124,9 @@ Una aplicación para Nintendo Wii U que transforma tu GamePad en una cámara fun
   <img src="https://github.com/user-attachments/assets/cd1dd5c3-31a4-45ec-b9de-7371399268d4" alt="WiiUCamera Menu" width="400">
 </p>
 
+### ⚠️ Nota importante sobre Tiramisú
+> **El soporte para Tiramisú está actualmente en desarrollo.**
+> Estoy experimentando errores de compilación al intentar adaptar la aplicación para Tiramisú. Como no cuento con un entorno de Tiramisú, dependo de voluntarios de la comunidad para las pruebas y la depuración. Asi que..., usen **Aroma** para disfrutar de una experiencia más fluida
 
 ### ✨ Características principales
 * **📷 Modo Foto:** Toma fotos y guárdalas en la tarjeta SD.
@@ -191,7 +201,7 @@ Al finalizar, obtendrás el archivo WiiUCamera.wuhb listo para usar.
 
 📝 Registro de cambios (v1.2.0)
 
-- NUEVO: Panel de Efectos en el Editor. Ajusta Brillo, Contraste y filtro Blanco y Negro fácilmente.
+- NUEVO: Rediseño del Menú Principal. Botones más grandes, mejor distribución y texto de bienvenida integrado.
 
 - CORRECCIÓN: Se solucionó la distorsión inclinada al guardar fotos editadas. Ahora el guardado es píxel-perfecto y sin corrupción.
 
