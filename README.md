@@ -10,8 +10,9 @@
 A Nintendo Wii U application that transforms your GamePad into a functional camera with recording capabilities, filters, and a gallery.
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/7d5e8f3c-4c79-4668-aebe-9adbeca3dd84" alt="WiiUCamera Menu" width="400">
+  <img src="https://github.com/user-attachments/assets/78c61ed7-5b10-490f-9852-4b4230695b6c" alt="WiiUCamera Menu" width="400">
 </p>
+
 
 ### ⚠️ Important Note regarding Tiramisu
 > **Tiramisu Support is currently a Work In Progress (WIP).**
@@ -121,7 +122,7 @@ Made with ❤️ for users who still use Wii U.
 Una aplicación para Nintendo Wii U que transforma tu GamePad en una cámara funcional con capacidad de grabación, filtros y galería.
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/cd1dd5c3-31a4-45ec-b9de-7371399268d4" alt="WiiUCamera Menu" width="400">
+  <img src="https://github.com/user-attachments/assets/78c61ed7-5b10-490f-9852-4b4230695b6c" alt="WiiUCamera Menu" width="400">
 </p>
 
 ### ⚠️ Nota importante sobre Tiramisú
