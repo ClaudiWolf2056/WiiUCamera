@@ -117,13 +117,7 @@ void EjecutarWebcam(SDL_Renderer* renderer, TTF_Font* font, bool esIngles) {
 
     bool enCamara = true;
     
-    // CALCULO DE CENTRADO:
-    // Pantalla: 1280 x 720
-    // Imagen: 640 x 480
-    // Escalado para llenar altura (720): 480 * 1.5 = 720
-    // Nuevo Ancho: 640 * 1.5 = 960
-    // Espacio horizontal restante: 1280 - 960 = 320
-    // Margen izquierdo para centrar: 320 / 2 = 160
+    
     SDL_Rect rectCamara = {160, 0, 960, 720}; 
     
     webFrameListo = false;
@@ -172,5 +166,6 @@ void EjecutarWebcam(SDL_Renderer* renderer, TTF_Font* font, bool esIngles) {
     }
     CerrarWebcamContexto(&ctx);
 }
+
 
 #endif
