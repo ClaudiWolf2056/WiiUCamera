@@ -1,4 +1,4 @@
-# 📸 WiiUCamera v1.3.2 (Beta)
+# 📸 WiiUCamera v1.3.8 (Beta)
 
 [English](#english) | [Español](#español)
 
@@ -93,18 +93,10 @@ make
 
 Upon completion, you will get a WiiUCamera.wuhb file ready to use.
 
-📝 Changelog (v1.3.2)
-- NEW: Main Menu Redesign. Bigger buttons, cleaner look, and integrated "Welcome" text.
-
-- FIX: Aggregation of experimental phases.
-
-- NEW: Main Menu Redesign. Bigger buttons, cleaner look, and integrated "Welcome" text.
-
-- NEW: Configuration system from the main menu
-
-- NEW: Zoom and Movement when viewing a photo in the gallery
-
-- UI: Improved button clarity and layout in the Editor.
+📝 Changelog (v1.3.8)
+- NEW: Added native audio+video synchronization for recording!
+- FIX: Upgraded the gallery to support video playback with audio demuxing via SDL_mixer.
+- DEV FIX: Added proper hardware freeing (MICUninit) upon exiting recorder.
 
 🤝 Credits and Acknowledgements
 Main Developer: ClaudiWolf2056
@@ -201,17 +193,9 @@ make
 Al finalizar, obtendrás el archivo WiiUCamera.wuhb listo para usar.
 
 📝 Registro de cambios (v1.3.2)
-- NUEVO: Rediseño del menú principal. Botones más grandes, diseño más limpio y texto de "Bienvenida" integrado.
-
-- CORRECCIÓN: Agregación de fases experimentales.
-
-- NUEVO: Rediseño del menú principal. Botones más grandes, diseño más limpio y texto de "Bienvenida" integrado.
-
-- NUEVO: Sistema de configuración desde el menú principal
-
-- NUEVO: Zoom y movimiento al ver una foto en la galería
-
-- Interfaz de usuario: Se mejoró la claridad y el diseño de los botones en el editor.
+- NUEVO: Se agregó sincronización nativa de audio y video para la grabación de videos
+- FIX: Se actualizó la galería para que admita la reproducción de video con demultiplexación de audio mediante SDL_mixer.
+- DEV FIX: Se agregó la liberación de hardware adecuada (MICUninit) al salir de la grabadora.
 
 🤝 Créditos y agradecimientos
 Desarrollador principal: ClaudiWolf2056
