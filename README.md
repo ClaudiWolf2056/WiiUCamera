@@ -1,4 +1,4 @@
-# 📸 WiiUCamera v1.3.8 (Beta)
+# 📸 WiiUCamera v1.6.8 (Beta)
 
 [English](#english) | [Español](#español)
 
@@ -93,7 +93,7 @@ make
 
 Upon completion, you will get a WiiUCamera.wuhb file ready to use.
 
-📝 Changelog (v1.3.8)
+📝 Changelog (v1.6.8)
 - NEW: Added native audio+video synchronization for recording!
 - FIX: Upgraded the gallery to support video playback with audio demuxing via SDL_mixer.
 - DEV FIX: Added proper hardware freeing (MICUninit) upon exiting recorder.
@@ -192,7 +192,7 @@ make
 
 Al finalizar, obtendrás el archivo WiiUCamera.wuhb listo para usar.
 
-📝 Registro de cambios (v1.3.2)
+📝 Registro de cambios (v1.6.8)
 - NUEVO: Se agregó sincronización nativa de audio y video para la grabación de videos
 - FIX: Se actualizó la galería para que admita la reproducción de video con demultiplexación de audio mediante SDL_mixer.
 - DEV FIX: Se agregó la liberación de hardware adecuada (MICUninit) al salir de la grabadora.
