@@ -30,6 +30,7 @@
 #define MAX_REC_SECONDS 60     
 #define REC_BUFFER_SIZE (SAMPLE_RATE * 2 * MAX_REC_SECONDS) 
 
+// Restaurado al estado original que funcionaba
 static MICHandle g_hMic = 0;
 static void* g_hwBuffer = NULL;     
 static MICWorkMemory g_workMem;
@@ -67,7 +68,7 @@ bool GuardarWAV_Minion3() {
         return false;
     }
     char filePath[256];
-    const char* folderPath = "/vol/external01/WiiUCamera Files";
+    const char* folderPath = "fs:/vol/external01/WiiUCamera Files"; // Ruta arreglada para devkitPro
     struct stat st = {0};
     if (stat(folderPath, &st) == -1) mkdir(folderPath, 0777);
 
@@ -146,6 +147,7 @@ int Minion2_Thread(int argc, const char **argv) {
     return 0;
 }
 
+// Inicialización ORIGINAL intacta
 bool IniciarMicrofono() {
     if (g_micReady) return true;
     g_hwBuffer = memalign(0x40, HW_BUFFER_SIZE); 
@@ -156,6 +158,7 @@ bool IniciarMicrofono() {
     g_hMic = MICInit(MIC_INSTANCE_0, 0, &g_workMem, &err);
     if (g_hMic < 0 || err != MIC_ERROR_OK) { free(g_hwBuffer); return false; }
     if (MICOpen(g_hMic) != MIC_ERROR_OK) { MICUninit(g_hMic); free(g_hwBuffer); return false; }
+    
     g_micReady = true;
     g_threadRunning = true;
     OSCreateThread(&g_audioThread, Minion2_Thread, 0, NULL, g_threadStack + sizeof(g_threadStack), sizeof(g_threadStack), 10, OS_THREAD_ATTRIB_AFFINITY_CPU1);
@@ -163,9 +166,21 @@ bool IniciarMicrofono() {
     return true;
 }
 
+// CIERRE BLINDADO ANTI-CRASH
 void CerrarMicrofono() {
-    g_threadRunning = false; OSJoinThread(&g_audioThread, NULL); 
-    if (g_micReady) { MICClose(g_hMic); MICUninit(g_hMic); free(g_hwBuffer); g_micReady = false; }
+    // Si el hilo arrancó, lo apagamos seguro
+    if (g_threadRunning) {
+        g_threadRunning = false; 
+        OSJoinThread(&g_audioThread, NULL); 
+    }
+    
+    // Si el hardware encendió, lo cerramos y liberamos memoria
+    if (g_micReady) { 
+        MICClose(g_hMic); 
+        MICUninit(g_hMic); 
+        free(g_hwBuffer); 
+        g_micReady = false; 
+    }
 }
 
 // =============================================================================
@@ -181,8 +196,7 @@ void EscanearArchivosWAV() {
     g_wavFiles.clear();
     DIR* dir;
     struct dirent* ent;
-    // Escanear la carpeta de grabaciones
-    if ((dir = opendir("/vol/external01/WiiUCamera Files")) != NULL) {
+    if ((dir = opendir("fs:/vol/external01/WiiUCamera Files")) != NULL) { // Ruta corregida
         while ((ent = readdir(dir)) != NULL) {
             std::string name = ent->d_name;
             if (name.length() > 4 && name.substr(name.length() - 4) == ".wav") {
@@ -199,7 +213,7 @@ void ReproducirWAV(const char* filename) {
     if (g_currentMusic) { Mix_FreeMusic(g_currentMusic); g_currentMusic = NULL; }
     
     char fullPath[256];
-    sprintf(fullPath, "/vol/external01/WiiUCamera Files/%s", filename);
+    sprintf(fullPath, "fs:/vol/external01/WiiUCamera Files/%s", filename); // Ruta corregida
     
     g_currentMusic = Mix_LoadMUS(fullPath);
     if (g_currentMusic) {
@@ -225,17 +239,15 @@ void DetenerReproduccion() {
 // =============================================================================
 
 void DibujarUI(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSmall) {
-    // Fondo oscuro elegante
     SDL_SetRenderDrawColor(ren, 18, 18, 24, 255); SDL_RenderClear(ren);
 
-    // --- TITULO Y DESCRIPCION ---
     SDL_Surface* sT = TTF_RenderText_Blended(font, "Grabador de Audio (Test)", {255, 200, 0, 255});
     SDL_Texture* tT = SDL_CreateTextureFromSurface(ren, sT);
     SDL_Rect rT = {(1280-sT->w)/2, 30, sT->w, sT->h};
     SDL_RenderCopy(ren, tT, NULL, &rT);
     SDL_FreeSurface(sT); SDL_DestroyTexture(tT);
 
-    SDL_Surface* sD = TTF_RenderText_Blended(fontSmall, "Este es un espacio de pruebas para el microfono de Wii U, puedes grabar audios aqui.", {200, 200, 200, 255});
+    SDL_Surface* sD = TTF_RenderText_Blended(fontSmall, "Este es un espacio de pruebas para el microfono de Wii U.", {200, 200, 200, 255});
     SDL_Texture* tD = SDL_CreateTextureFromSurface(ren, sD);
     SDL_Rect rD = {(1280-sD->w)/2, 80, sD->w, sD->h};
     SDL_RenderCopy(ren, tD, NULL, &rD);
@@ -247,18 +259,14 @@ void DibujarUI(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSmall) {
     SDL_RenderCopy(ren, tR, NULL, &rR);
     SDL_FreeSurface(sR); SDL_DestroyTexture(tR);
 
-    // --- BARRA DE VOLUMEN (Coherente) ---
-    // Marco
     SDL_Rect barBg = {340, 180, 600, 60};
     SDL_SetRenderDrawColor(ren, 30, 30, 40, 255); SDL_RenderFillRect(ren, &barBg);
     SDL_SetRenderDrawColor(ren, 100, 100, 100, 255); SDL_RenderDrawRect(ren, &barBg);
 
-    // Relleno Dinamico
     int w = (int)(596 * g_visualVolume); 
     if(w > 596) w = 596;
     SDL_Rect fill = {342, 182, w, 56};
     
-    // Verde (bajo) -> Amarillo (medio) -> Rojo (alto/grabando)
     Uint8 r = (g_visualVolume > 0.5f) ? 255 : (Uint8)(g_visualVolume * 510);
     Uint8 g = (g_visualVolume > 0.5f) ? (Uint8)((1.0f - g_visualVolume) * 510) : 255;
     if(g_isRecording) { r=255; g=0; } 
@@ -266,7 +274,6 @@ void DibujarUI(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSmall) {
     SDL_SetRenderDrawColor(ren, r, g, 0, 255);
     SDL_RenderFillRect(ren, &fill);
 
-    // --- INSTRUCCIONES DE CONTROL ---
     const char* instr = g_isRecording 
         ? "<< GRABANDO EN PROGRESO >> Presiona (B) para Terminar" 
         : "Presiona (A) dos veces para GRABAR  |  (B) Salir";
@@ -278,7 +285,6 @@ void DibujarUI(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSmall) {
     SDL_RenderCopy(ren, tI, NULL, &rI);
     SDL_FreeSurface(sI); SDL_DestroyTexture(tI);
 
-    // --- MENSAJES DEL SISTEMA ---
     if (strlen(g_systemMessage) > 0) {
         SDL_Surface* sM = TTF_RenderText_Blended(fontSmall, g_systemMessage, {255, 200, 80, 255});
         SDL_Texture* tM = SDL_CreateTextureFromSurface(ren, sM);
@@ -287,13 +293,11 @@ void DibujarUI(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSmall) {
         SDL_FreeSurface(sM); SDL_DestroyTexture(tM);
     }
 
-    // --- MINI GALERIA ---
     int galY = 360;
     SDL_Rect galBox = {200, galY, 880, 250};
     SDL_SetRenderDrawColor(ren, 25, 25, 30, 255); SDL_RenderFillRect(ren, &galBox);
     SDL_SetRenderDrawColor(ren, 60, 60, 70, 255); SDL_RenderDrawRect(ren, &galBox);
 
-    // Titulo Galeria
     SDL_Surface* sG = TTF_RenderText_Blended(fontSmall, "--- Galeria de Grabaciones ---", {100, 200, 255, 255});
     SDL_Texture* tG = SDL_CreateTextureFromSurface(ren, sG);
     SDL_Rect rG = {(1280-sG->w)/2, galY + 10, sG->w, sG->h};
@@ -324,7 +328,6 @@ void DibujarUI(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSmall) {
             }
         }
         
-        // Controles de Reproductor
         const char* playerMsg = g_isMusicPlaying 
             ? "[ X: STOP ]   [ < -5s Retroceder ]   [ > +5s Adelantar ]" 
             : "[ X: PLAY ]   [ Flechas: Seleccionar ]";
@@ -346,6 +349,7 @@ int EjecutarPruebaMic(SDL_Renderer* renderer, TTF_Font* font, bool esIngles) {
     g_recBuffer = (uint8_t*)malloc(REC_BUFFER_SIZE);
     if (!g_recBuffer) return 0;
 
+    sprintf(g_systemMessage, ""); // Limpiar mensaje anterior
     bool running = true;
     if (!IniciarMicrofono()) sprintf(g_systemMessage, "Error Hardware Mic");
     
@@ -374,7 +378,7 @@ int EjecutarPruebaMic(SDL_Renderer* renderer, TTF_Font* font, bool esIngles) {
 
         // 2. GRABAR (DOBLE CLICK A)
         if (vpad.trigger & VPAD_BUTTON_A) {
-            if (!g_isRecording) {
+            if (!g_isRecording && g_micReady) {
                 OSTime now = OSGetTime();
                 if (OSTicksToMilliseconds(now - lastTimeA) < 400) { 
                     DetenerReproduccion(); 
@@ -427,14 +431,7 @@ int EjecutarPruebaMic(SDL_Renderer* renderer, TTF_Font* font, bool esIngles) {
     if (fontSmall != font) TTF_CloseFont(fontSmall);
     if(g_recBuffer) free(g_recBuffer);
 
-    // --- CORRECCION DEL BUG DE MUSICA ---
-    // Como SDL_mixer mata la musica anterior al cargar el WAV, 
-    // necesitamos recargarla manualmente al salir.
-    // CAMBIA "content/music.mp3" POR TU ARCHIVO REAL DEL MENU
-    Mix_Music* menuMusic = Mix_LoadMUS("content/music.mp3"); 
-    if (menuMusic) {
-        Mix_PlayMusic(menuMusic, -1); // -1 = Loop infinito
-    }
+    // main.cpp se encarga de reanudar la música, así que borramos esa lógica redundante.
 
     return 1;
 }

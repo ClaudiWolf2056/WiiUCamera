@@ -29,35 +29,39 @@ link_directories(
 # --- 3. FUENTES ---
 file(GLOB_RECURSE SOURCE_FILES "source/*.cpp" "source/*.h")
 
-# --- 4. EJECUTABLE (NOMBRE LIMPIO) ---
-# Antes era WiiUCamera.elf, ahora es solo WiiUCamera
+# --- 4. EJECUTABLE ---
 add_executable(WiiUCamera ${SOURCE_FILES})
 
-# --- 5. LIBRERIAS ---
+# --- 5. LIBRERIAS (ORDEN ESTRICTO CORREGIDO) ---
 target_link_libraries(WiiUCamera
-    # Capa Superior (SDL)
-    -lSDL2_ttf
-    -lSDL2_mixer
-    -lSDL2_image
-    -lSDL2
+    # 1. Capas superiores (Las que piden ayuda)
+    SDL2_ttf
+    SDL2_image
+    SDL2_mixer
+    SDL2
     
-    # Dependencias de TTF/Imagen
-    -lfreetype
-    -lharfbuzz
-    -lbz2
-    -lpng
-    -ljpeg
-    -lz
+    # 2. Fuentes y procesamiento de texto
+    freetype
+    harfbuzz
     
-    # Dependencias de Audio
-    -lmpg123
-    -lmodplug
-    -lvorbisidec
-    -logg
+    # 3. Formatos de compresión y bases (A las que les piden ayuda)
+    webp
+    jpeg
+    png
+    brotlidec
+    brotlicommon
+    bz2
+    z
     
-    # Sistema
-    -lm
-    -lwut 
+    # 4. Audio
+    mpg123
+    modplug
+    vorbisidec
+    ogg
+    
+    # 5. Sistema base
+    m
+    wut 
 )
 
 # --- 6. SALIDA ---

@@ -14,13 +14,10 @@
 #include <algorithm>
 #include <cstdio>
 #include <map>
+#include <malloc.h>
 #include "webserver.h"
 #include "qrcodegen.hpp" 
 using namespace qrcodegen;
-
-#define VID_W 640
-#define VID_H 480
-#define VID_SIZE (VID_W * VID_H * 4)
 
 const float GAL_ADC_MIN_X = 100.0f; const float GAL_ADC_MAX_X = 3950.0f;
 const float GAL_ADC_MIN_Y = 100.0f; const float GAL_ADC_MAX_Y = 3900.0f;
@@ -69,41 +66,160 @@ std::vector<FotoEntry> EscanearMedia(const std::string& directorio, int &outF, i
     return lista;
 }
 
+// ============================================================================
+// NUEVO REPRODUCTOR: Lee Video e Inyecta el Audio al Canal 1 de SDL_Mixer
+// ============================================================================
 void ReproducirVideoAVI(SDL_Renderer* renderer, TTF_Font* font, const std::string& ruta, bool esIngles) {
     FILE* f = fopen(ruta.c_str(), "rb"); if (!f) return;
-    long moviOffset = 0; uint8_t bufferHead[1024]; fread(bufferHead, 1, 1024, f);
-    for(int i=0; i<1020; i++) { if(bufferHead[i] == 'm' && bufferHead[i+1] == 'o' && bufferHead[i+2] == 'v' && bufferHead[i+3] == 'i') { moviOffset = i + 4; break; } }
-    if (moviOffset == 0) moviOffset = 500;
-    fseek(f, 0, SEEK_END); long fileSize = ftell(f); long dataSize = fileSize - moviOffset; 
-    int totalFrames = dataSize / (VID_SIZE + 8); if (totalFrames <= 0) { fclose(f); return; }
-    SDL_Texture* videoTex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, VID_W, VID_H); 
-    uint32_t* pixelBuffer = (uint32_t*)malloc(VID_SIZE);
-    int frameActual = 0; bool reproduciendo = true; bool pausado = false; int delayVideo = 10; 
     
-    // FIX: Agregado WHBProcIsRunning()
+    uint32_t vW = 320, vH = 240; long moviOffset = 0;
+    uint8_t head[2048]; size_t hLen = fread(head, 1, 2048, f);
+    for(size_t i=0; i<hLen-16; i++) {
+        if(head[i]=='s'&&head[i+1]=='t'&&head[i+2]=='r'&&head[i+3]=='f' && head[i+4]==40 && head[i+5]==0){ 
+            uint32_t w = head[i+12] | (head[i+13]<<8) | (head[i+14]<<16) | (head[i+15]<<24);
+            uint32_t h = head[i+16] | (head[i+17]<<8) | (head[i+18]<<16) | (head[i+19]<<24);
+            if (w > 0 && w <= 1280 && h > 0 && h <= 720) { vW = w; vH = h; }
+        }
+        if(head[i]=='m'&&head[i+1]=='o'&&head[i+2]=='v'&&head[i+3]=='i') { moviOffset = i + 4; }
+    }
+    if (moviOffset == 0) moviOffset = 500;
+    
+    bool isOldVideo = false;
+    fseek(f, moviOffset, SEEK_SET); char pId[5] = {0}; uint32_t pSzLE = 0;
+    if (fread(pId, 1, 4, f) == 4 && fread(&pSzLE, 1, 4, f) == 4) {
+        uint32_t pSz = ((pSzLE >> 24) & 0xFF) | ((pSzLE >> 8) & 0xFF00) | ((pSzLE << 8) & 0xFF0000) | ((pSzLE << 24) & 0xFF000000);
+        if (pSz > 500000) { isOldVideo = true; vW = 640; vH = 480; } 
+    }
+    
+    // --- MAGIA PURA: Extraer Audio y enviarlo a SDL_Mixer ---
+    fseek(f, moviOffset, SEEK_SET);
+    uint32_t maxAudioBytes = 32000 * 2 * 60; // Max 60 segundos de memoria
+    uint8_t* wavBuf = (uint8_t*)malloc(maxAudioBytes + 44);
+    uint32_t audioSize = 0;
+    
+    if (wavBuf) {
+        char cId[5] = {0}; uint32_t cSzLE = 0;
+        while (fread(cId, 1, 4, f) == 4 && fread(&cSzLE, 1, 4, f) == 4) {
+            uint32_t cSz = ((cSzLE >> 24) & 0xFF) | ((cSzLE >> 8) & 0xFF00) | ((cSzLE << 8) & 0xFF0000) | ((cSzLE << 24) & 0xFF000000);
+            uint32_t rSz = cSz + (cSz % 2);
+            if (strncmp(cId, "idx1", 4) == 0) break;
+            if (strncmp(cId, "01wb", 4) == 0 && audioSize + cSz <= maxAudioBytes) {
+                fread(wavBuf + 44 + audioSize, 1, cSz, f);
+                audioSize += cSz;
+                if (cSz % 2 != 0) fseek(f, 1, SEEK_CUR);
+            } else {
+                fseek(f, rSz, SEEK_CUR);
+            }
+        }
+    }
+    
+    Mix_Chunk* audioChunk = NULL;
+    if (audioSize > 0 && wavBuf) {
+        // Escribir cabecera WAV estándar en RAM para engañar a SDL_Mixer
+        auto W32 = [&](int o, uint32_t v) { wavBuf[o]=v&0xFF; wavBuf[o+1]=(v>>8)&0xFF; wavBuf[o+2]=(v>>16)&0xFF; wavBuf[o+3]=(v>>24)&0xFF; };
+        auto W16 = [&](int o, uint16_t v) { wavBuf[o]=v&0xFF; wavBuf[o+1]=(v>>8)&0xFF; };
+        memcpy(wavBuf, "RIFF", 4); W32(4, 36 + audioSize); memcpy(wavBuf+8, "WAVEfmt ", 8);
+        W32(16, 16); W16(20, 1); W16(22, 1); W32(24, 32000); W32(28, 64000); W16(32, 2); W16(34, 16);
+        memcpy(wavBuf+36, "data", 4); W32(40, audioSize);
+        
+        SDL_RWops* rw = SDL_RWFromMem(wavBuf, 44 + audioSize);
+        audioChunk = Mix_LoadWAV_RW(rw, 1); 
+    }
+    if (wavBuf) free(wavBuf);
+    // -------------------------------------------------------------
+
+    // Regresar al inicio para comenzar a pintar el video
+    fseek(f, moviOffset, SEEK_SET); 
+    SDL_Texture* videoTex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, vW, vH); 
+    uint32_t maxFrameSize = vW * vH * 4; 
+    
+    uint8_t* rawBuf = (uint8_t*)memalign(256, maxFrameSize + 8192); 
+    uint32_t* argbBuf = (uint32_t*)memalign(256, vW * vH * 4);
+    
+    if (!rawBuf || !argbBuf) {
+        if(rawBuf) free(rawBuf); if(argbBuf) free(argbBuf);
+        if(audioChunk) Mix_FreeChunk(audioChunk);
+        SDL_DestroyTexture(videoTex); fclose(f); return;
+    }
+
+    bool reproduciendo = true; bool pausado = false; int delayVideo = 10; 
+    uint32_t tickStart = SDL_GetTicks();
+    uint32_t targetDelay = isOldVideo ? 33 : 50; 
+    
+    // Pausar música de fondo e Iniciar audio del video
+    if (Mix_PlayingMusic()) Mix_PauseMusic();
+    if (audioChunk) Mix_PlayChannel(1, audioChunk, 0); // Empujar audio al canal 1 de la Wii U
+    
     while (reproduciendo && WHBProcIsRunning()) {
         SDL_Event event; while (SDL_PollEvent(&event)) { if (event.type == SDL_QUIT) reproduciendo = false; }
         VPADStatus vpad; VPADReadError err; VPADRead(VPAD_CHAN_0, &vpad, 1, &err);
         if (delayVideo > 0) delayVideo--;
         if (delayVideo == 0) {
             if (vpad.trigger & VPAD_BUTTON_B) reproduciendo = false; 
-            if (vpad.trigger & VPAD_BUTTON_A) pausado = !pausado;
-            if (vpad.hold & VPAD_BUTTON_RIGHT) { frameActual += 5; if (frameActual >= totalFrames) frameActual = totalFrames - 1; }
-            if (vpad.hold & VPAD_BUTTON_LEFT) { frameActual -= 5; if (frameActual < 0) frameActual = 0; }
+            if (vpad.trigger & VPAD_BUTTON_A) { 
+                pausado = !pausado; 
+                if (audioChunk) { if (pausado) Mix_Pause(1); else Mix_Resume(1); } // Pausa mágica de audio
+            }
         }
-        if (!pausado) { frameActual++; if (frameActual >= totalFrames) { frameActual = 0; pausado = true; } }
-        long offsetFrame = moviOffset + (frameActual * (long)(VID_SIZE + 8)) + 8;
-        fseek(f, offsetFrame, SEEK_SET); fread(pixelBuffer, 1, VID_SIZE, f);
-        for(int i=0; i<VID_W*VID_H; i++) { uint32_t p = pixelBuffer[i]; uint32_t b = (p >> 24) & 0xFF; uint32_t g = (p >> 16) & 0xFF; uint32_t r = (p >> 8) & 0xFF; pixelBuffer[i] = (0xFF << 24) | (b << 16) | (g << 8) | r; }
-        SDL_UpdateTexture(videoTex, NULL, pixelBuffer, VID_W * 4); 
+        
+        if (!pausado) { 
+            char chunkId[5] = {0}; uint32_t chunkSizeLE = 0;
+            if (fread(chunkId, 1, 4, f) != 4) { 
+                fseek(f, moviOffset, SEEK_SET); // Loop del video
+                if(audioChunk) Mix_PlayChannel(1, audioChunk, 0); // Loop del audio
+                continue; 
+            }
+            fread(&chunkSizeLE, 1, 4, f);
+            
+            uint32_t chunkSize = ((chunkSizeLE >> 24) & 0xFF) | ((chunkSizeLE >> 8) & 0xFF00) | ((chunkSizeLE << 8) & 0xFF0000) | ((chunkSizeLE << 24) & 0xFF000000);
+            uint32_t readSize = chunkSize + (chunkSize % 2); 
+            
+            if (strncmp(chunkId, "idx1", 4) == 0) { 
+                fseek(f, moviOffset, SEEK_SET); 
+                if(audioChunk) Mix_PlayChannel(1, audioChunk, 0); 
+                continue; 
+            }
+            if (readSize > maxFrameSize + 8192) { fseek(f, readSize, SEEK_CUR); continue; } 
+            
+            fread(rawBuf, 1, readSize, f);
+            
+            if (strncmp(chunkId, "00db", 4) == 0 || strncmp(chunkId, "00dc", 4) == 0) {
+                if (isOldVideo) {
+                    for(int i=0; i<vW*vH; i++) {
+                        uint32_t p = ((uint32_t*)rawBuf)[i];
+                        uint32_t b = (p >> 24) & 0xFF; uint32_t g = (p >> 16) & 0xFF; uint32_t r = (p >> 8) & 0xFF; 
+                        argbBuf[i] = (0xFF << 24) | (b << 16) | (g << 8) | r; 
+                    }
+                } else {
+                    for(int i=0; i<vW*vH; i++) {
+                        uint8_t b = rawBuf[i*3]; uint8_t g = rawBuf[i*3+1]; uint8_t r = rawBuf[i*3+2];
+                        argbBuf[i] = (0xFF << 24) | (r << 16) | (g << 8) | b;
+                    }
+                }
+                SDL_UpdateTexture(videoTex, NULL, argbBuf, vW * 4); 
+                
+                uint32_t now = SDL_GetTicks();
+                if (now - tickStart < targetDelay) SDL_Delay(targetDelay - (now - tickStart)); 
+                tickStart = SDL_GetTicks();
+            } 
+            // Ignoramos el bloque "01wb" porque SDL_Mixer ya lo está cantando
+        }
+        
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); SDL_RenderClear(renderer);
-        SDL_Rect rVid = { (1280 - 960)/2, (720 - 720)/2, 960, 720 }; SDL_RenderCopyEx(renderer, videoTex, NULL, &rVid, 0, NULL, SDL_FLIP_VERTICAL);
+        SDL_Rect rVid = { (1280 - 960)/2, (720 - 720)/2, 960, 720 }; 
+        SDL_RenderCopyEx(renderer, videoTex, NULL, &rVid, 0, NULL, SDL_FLIP_VERTICAL);
+        
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 180); SDL_Rect rBar = {0, 660, 1280, 60}; SDL_RenderFillRect(renderer, &rBar);
         DibujarBtnG(renderer, 50, 665, 300, 50, {0,150,0,255}, pausado ? (esIngles?"(A) Play":"(A) Reprod") : (esIngles?"(A) Pause":"(A) Pausa"), font);
         DibujarBtnG(renderer, 1050, 665, 180, 50, {150,50,50,255}, "(B) Exit", font);
-        SDL_RenderPresent(renderer); if(!pausado) SDL_Delay(33);
+        SDL_RenderPresent(renderer); 
     }
-    free(pixelBuffer); SDL_DestroyTexture(videoTex); fclose(f);
+    
+    // Limpieza general
+    Mix_HaltChannel(1);
+    if (audioChunk) Mix_FreeChunk(audioChunk);
+    free(rawBuf); free(argbBuf); SDL_DestroyTexture(videoTex); fclose(f);
+    if (Mix_PausedMusic()) Mix_ResumeMusic(); // Devolverle su trabajo a la música de fondo
 }
 
 int EjecutarGaleria(SDL_Renderer* renderer, TTF_Font* font, bool esIngles, int tipoGaleria, Mix_Music* musicPtr = NULL, bool musicEnabled = true) {
@@ -116,7 +232,6 @@ int EjecutarGaleria(SDL_Renderer* renderer, TTF_Font* font, bool esIngles, int t
     
     Uint32 musicGapTimer = 0;
 
-    // FIX: Agregado WHBProcIsRunning()
     while(!salir && WHBProcIsRunning()) {
         VPADStatus vpad; VPADReadError e; VPADRead(VPAD_CHAN_0, &vpad, 1, &e);
         SDL_Event ev; while(SDL_PollEvent(&ev)){ if(ev.type==SDL_QUIT) return -1; }
@@ -125,14 +240,8 @@ int EjecutarGaleria(SDL_Renderer* renderer, TTF_Font* font, bool esIngles, int t
         if (musicEnabled && musicPtr) {
             if (!Mix_PlayingMusic()) {
                 if (musicGapTimer == 0) musicGapTimer = SDL_GetTicks(); 
-                // CAMBIO: 200 ms (0.2 segundos) de pausa
-                if (SDL_GetTicks() - musicGapTimer > 200) { 
-                    Mix_PlayMusic(musicPtr, 0); 
-                    musicGapTimer = 0;
-                }
-            } else {
-                musicGapTimer = 0;
-            }
+                if (SDL_GetTicks() - musicGapTimer > 200) { Mix_PlayMusic(musicPtr, 0); musicGapTimer = 0; }
+            } else { musicGapTimer = 0; }
         }
 
         if (borrar) {
