@@ -28,7 +28,7 @@ using namespace qrcodegen;
 #include "webcam.h" 
 #include "chroma.h" 
 
-const char* APP_VERSION = "v1.3.8"; 
+const char* APP_VERSION = "v1.6.8"; 
 
 std::string ROOT_PATH = "";
 void DetectarRutaRaiz() {
@@ -428,12 +428,12 @@ int main(int argc, char **argv) {
         } else if (estado == ESTADO_UPDATES) {
              DibujarTextoCentrado(renderer, fuenteGrande, esIngles ? "Changelog" : "Novedades", 160, colY); int y = 250; int gap = 45; SDL_Color colTxt = colW;
              if(esIngles){ 
-                DibujarTextoCentrado(renderer, fuentePequena, "v1.3.8 - Video + Audio Update!", y, colTxt);
+                DibujarTextoCentrado(renderer, fuentePequena, "v1.6.8 - Video + Audio Update!", y, colTxt);
                 DibujarTextoCentrado(renderer, fuenteMini, "- NEW: Native Video Recording WITH AUDIO!", y + gap*1.5, colTxt);
                 DibujarTextoCentrado(renderer, fuenteMini, "- NEW: Gallery now works as a full Media Player. ", y + gap*2.5, colTxt);
                 DibujarTextoCentrado(renderer, fuenteMini, "- UI NEW: Beautiful new camera menu buttons", y + gap*3.5, colTxt);
             } else { 
-                DibujarTextoCentrado(renderer, fuentePequena, "v1.3.8 - La actualizacion de Audio + Video", y, colTxt);
+                DibujarTextoCentrado(renderer, fuentePequena, "v1.6.8 - La actualizacion de Audio + Video", y, colTxt);
                 DibujarTextoCentrado(renderer, fuenteMini, "- NUEVO: Grabación de video nativo CON AUDIO!", y + gap*1.5, colTxt);
                 DibujarTextoCentrado(renderer, fuenteMini, "- NUEVO: La Galería ahora es un reproductor multimedia", y + gap*2.5, colTxt);
                 DibujarTextoCentrado(renderer, fuenteMini, "- UI: Nuevos botones en el modo cámara.", y + gap*3.5, colTxt);
