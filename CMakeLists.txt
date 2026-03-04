@@ -64,7 +64,7 @@ target_link_libraries(WiiUCamera
     wut 
 )
 
-# --- 6. SALIDA ---
+# --- 6. SALIDA ----
 wut_create_rpx(WiiUCamera)
 wut_create_wuhb(WiiUCamera
     CONTENT content
