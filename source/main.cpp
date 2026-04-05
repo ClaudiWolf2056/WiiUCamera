@@ -27,8 +27,9 @@ using namespace qrcodegen;
 #include "mic_test.h" 
 #include "webcam.h" 
 #include "chroma.h" 
+#include "editor3d.h"
 
-const char* APP_VERSION = "v1.6.8"; 
+const char* APP_VERSION = "v1.8.2"; 
 
 std::string ROOT_PATH = "";
 void DetectarRutaRaiz() {
@@ -65,7 +66,7 @@ SDL_Texture* GenerarTexturaQR(SDL_Renderer* renderer, const char* texto) {
 enum EstadoApp { 
     ESTADO_MENU_PRINCIPAL, ESTADO_SUBMENU_MODOS, ESTADO_UPDATES, ESTADO_AGRADECIMIENTOS, 
     ESTADO_CAMARA, ESTADO_GALERIA, ESTADO_EDITOR, 
-    ESTADO_MAS_OPCIONES, ESTADO_INFO_WEBCAM, ESTADO_INFO_CHROMA, ESTADO_AJUSTES 
+    ESTADO_MAS_OPCIONES, ESTADO_INFO_WEBCAM, ESTADO_INFO_CHROMA, ESTADO_INFO_3D, ESTADO_AJUSTES 
 };
 
 const float MAIN_ADC_MIN_X = 100.0f; const float MAIN_ADC_MAX_X = 3950.0f;
@@ -217,7 +218,7 @@ int main(int argc, char **argv) {
             if (tStartY == -1) tStartY = touchY;
             if (estado == ESTADO_INFO_CHROMA && tStartY != -1) { int d = touchY - tStartY; if (abs(d) > 5) { scrollChroma -= d; if (scrollChroma < 0) scrollChroma = 0; tStartY = touchY; } }
             if (estado == ESTADO_AGRADECIMIENTOS && tStartY != -1) { int d = touchY - tStartY; if (abs(d) > 5) { scrollY -= d; if (scrollY < 0) scrollY = 0; tStartY = touchY; } }
-            if (estado != ESTADO_MENU_PRINCIPAL && estado != ESTADO_AJUSTES && estado != ESTADO_MAS_OPCIONES && estado != ESTADO_SUBMENU_MODOS && estado != ESTADO_INFO_WEBCAM && estado != ESTADO_INFO_CHROMA && touchY > 600 && touchX > 1100 && delayInput == 0) {
+            if (estado != ESTADO_MENU_PRINCIPAL && estado != ESTADO_AJUSTES && estado != ESTADO_MAS_OPCIONES && estado != ESTADO_SUBMENU_MODOS && estado != ESTADO_INFO_WEBCAM && estado != ESTADO_INFO_CHROMA && estado != ESTADO_INFO_3D && touchY > 600 && touchX > 1100 && delayInput == 0) {
                  if (estado != ESTADO_CAMARA && estado != ESTADO_GALERIA && estado != ESTADO_EDITOR) {
                     estado = ESTADO_MENU_PRINCIPAL; delayInput = 30; ReproducirSonidoSelect(); tStartY = -1;
                  }
@@ -242,15 +243,17 @@ int main(int argc, char **argv) {
                         seleccion = i; ReproducirSonidoSelect(); 
                         if(i==0) { Mix_PauseMusic(); EjecutarWebcam(renderer, fuenteMini, esIngles); Mix_ResumeMusic(); }
                         else if(i==1) { Mix_PauseMusic(); EjecutarChroma(renderer, fuenteMini, ROOT_PATH); Mix_ResumeMusic(); } 
+                        else if(i==2) { Mix_PauseMusic(); EjecutarGenerador3D(renderer, fuenteMini, esIngles); Mix_ResumeMusic(); } 
                         if (!WHBProcIsRunning()) { appRunning = false; break; }
                         delayInput = 30; tStartY = -1; 
                     }
                     if (i==0) { SDL_Rect rInfo = { ((1280-600)/2) + 610, startY + (i*60), 120, 50 }; if (VerificarToqueBoton(touchX, touchY, rInfo)) { ReproducirSonidoSelect(); estado = ESTADO_INFO_WEBCAM; delayInput = 30; } }
                     if (i==1) { SDL_Rect rInfo = { ((1280-600)/2) + 610, startY + (i*60), 120, 50 }; if (VerificarToqueBoton(touchX, touchY, rInfo)) { ReproducirSonidoSelect(); estado = ESTADO_INFO_CHROMA; scrollChroma = 0; delayInput = 30; } }
+                    if (i==2) { SDL_Rect rInfo = { ((1280-600)/2) + 610, startY + (i*60), 120, 50 }; if (VerificarToqueBoton(touchX, touchY, rInfo)) { ReproducirSonidoSelect(); estado = ESTADO_INFO_3D; delayInput = 30; } }
                 }
                 if (touchY > 600) { estado = ESTADO_MENU_PRINCIPAL; seleccion = 5; delayInput=30; }
             }
-            if ((estado == ESTADO_INFO_WEBCAM) && delayInput == 0 && touchY > 600) { estado = ESTADO_MAS_OPCIONES; delayInput = 30; ReproducirSonidoSelect(); }
+            if ((estado == ESTADO_INFO_WEBCAM || estado == ESTADO_INFO_3D) && delayInput == 0 && touchY > 600) { estado = ESTADO_MAS_OPCIONES; delayInput = 30; ReproducirSonidoSelect(); }
             if (estado == ESTADO_AJUSTES && delayInput == 0) {
                 if (touchY > 230 && touchY < 290) { selAjustes = 0; float pct = (float)(touchX - 340) / 600.0f; if (pct < 0) pct = 0; if (pct > 1) pct = 1; g_VolMusica = (int)(pct * 128); ActualizarVolumen(); }
                 if (touchY > 360 && touchY < 420) { selAjustes = 1; float pct = (float)(touchX - 340) / 600.0f; if (pct < 0) pct = 0; if (pct > 1) pct = 1; g_VolSFX = (int)(pct * 128); ActualizarVolumen(); }
@@ -354,14 +357,38 @@ int main(int argc, char **argv) {
             }
         } else if (estado == ESTADO_MAS_OPCIONES) {
             DibujarTextoCentrado(renderer, fuenteGrande, esIngles ? "More Options" : "Mas Opciones", 160, colY);
-            const char* opMoreEN[] = { "Start Webcam (Beta)", "Chroma Key (Green Screen)", "Button 3", "Soon..." }; const char* opMoreES[] = { "Ejecutar Webcam (Beta)", "Chroma Key (Pantalla Verde)", "Boton 3", "Pronto..." };
+            const char* opMoreEN[] = { "Start Webcam (Beta)", "Chroma Key (Green Screen)", "Image to 3D", "Soon..." }; 
+            const char* opMoreES[] = { "Ejecutar Webcam (Beta)", "Chroma Key (Pantalla Verde)", "Imagen a 3D", "Pronto..." };
             int startY = 300;
-            for (int i = 0; i < 4; i++) { SDL_Color c = (i==seleccion) ? colY : colW; DibujarTextoCentrado(renderer, fuentePequena, esIngles ? opMoreEN[i] : opMoreES[i], startY + (i*60), c); if (i <= 1) { int idInfo = 10 + i; SDL_Rect rInfo = { ((1280-600)/2) + 610, startY + (i*60), 120, 50 }; SDL_Color cInfo = (seleccion == idInfo) ? colY : (SDL_Color){0,150,255,255}; SDL_SetRenderDrawColor(renderer, cInfo.r, cInfo.g, cInfo.b, cInfo.a); SDL_RenderFillRect(renderer, &rInfo); SDL_Surface* s=TTF_RenderText_Blended(fuenteMini, "[ ! ] Info", {255,255,255,255}); if(s){ SDL_Texture* t=SDL_CreateTextureFromSurface(renderer,s); SDL_Rect r={rInfo.x + (120-s->w)/2, rInfo.y + (50-s->h)/2, s->w, s->h}; SDL_RenderCopy(renderer,t,NULL,&r); SDL_FreeSurface(s); SDL_DestroyTexture(t); } } }
+            for (int i = 0; i < 4; i++) { 
+                SDL_Color c = (i==seleccion) ? colY : colW; DibujarTextoCentrado(renderer, fuentePequena, esIngles ? opMoreEN[i] : opMoreES[i], startY + (i*60), c); 
+                if (i <= 2) { 
+                    int idInfo = 10 + i; SDL_Rect rInfo = { ((1280-600)/2) + 610, startY + (i*60), 120, 50 }; 
+                    SDL_Color cInfo = (seleccion == idInfo) ? colY : (SDL_Color){0,150,255,255}; 
+                    SDL_SetRenderDrawColor(renderer, cInfo.r, cInfo.g, cInfo.b, cInfo.a); SDL_RenderFillRect(renderer, &rInfo); 
+                    SDL_Surface* s=TTF_RenderText_Blended(fuenteMini, "[ ! ] Info", {255,255,255,255}); 
+                    if(s){ SDL_Texture* t=SDL_CreateTextureFromSurface(renderer,s); SDL_Rect r={rInfo.x + (120-s->w)/2, rInfo.y + (50-s->h)/2, s->w, s->h}; SDL_RenderCopy(renderer,t,NULL,&r); SDL_FreeSurface(s); SDL_DestroyTexture(t); } 
+                } 
+            }
             if (esIngles) DibujarBarraInferiorGlobal(renderer, fuenteMini, "(A) Select - (Right) Info", "(B) Back", ""); else DibujarBarraInferiorGlobal(renderer, fuenteMini, "(A) Seleccionar - (Der) Info", "(B) Atras", "");
-            if (delayInput == 0) { if (down) { if (seleccion >= 10) seleccion -= 9; else { seleccion++; if (seleccion>=4) seleccion=0; } delayInput=VEL_CURSOR; moved=true; } if (up) { if (seleccion >= 10) seleccion -= 10; else { seleccion--; if (seleccion<0) seleccion=3; } delayInput=VEL_CURSOR; moved=true; } if (right && (seleccion == 0 || seleccion == 1)) { seleccion += 10; delayInput=VEL_CURSOR; moved=true; } if (left && (seleccion == 10 || seleccion == 11)) { seleccion -= 10; delayInput=VEL_CURSOR; moved=true; } if (moved) ReproducirSonidoMover(); if (btnB) { estado = ESTADO_MENU_PRINCIPAL; seleccion=5; delayInput = 30; } 
-            if (btnA) { ReproducirSonidoSelect(); if (seleccion == 10) { estado = ESTADO_INFO_WEBCAM; } else if (seleccion == 11) { estado = ESTADO_INFO_CHROMA; scrollChroma = 0; } else if (seleccion == 0) { Mix_PauseMusic(); EjecutarWebcam(renderer, fuenteMini, esIngles); Mix_ResumeMusic(); } else if (seleccion == 1) { Mix_PauseMusic(); EjecutarChroma(renderer, fuenteMini, ROOT_PATH); Mix_ResumeMusic(); } 
-                if (!WHBProcIsRunning()) { appRunning = false; break; }
-                delayInput = 30; } }
+            if (delayInput == 0) { 
+                if (down) { if (seleccion >= 10) seleccion -= 9; else { seleccion++; if (seleccion>=4) seleccion=0; } delayInput=VEL_CURSOR; moved=true; } 
+                if (up) { if (seleccion >= 10) seleccion -= 10; else { seleccion--; if (seleccion<0) seleccion=3; } delayInput=VEL_CURSOR; moved=true; } 
+                if (right && (seleccion >= 0 && seleccion <= 2)) { seleccion += 10; delayInput=VEL_CURSOR; moved=true; } 
+                if (left && (seleccion >= 10 && seleccion <= 12)) { seleccion -= 10; delayInput=VEL_CURSOR; moved=true; } 
+                if (moved) ReproducirSonidoMover(); if (btnB) { estado = ESTADO_MENU_PRINCIPAL; seleccion=5; delayInput = 30; } 
+                if (btnA) { 
+                    ReproducirSonidoSelect(); 
+                    if (seleccion == 10) { estado = ESTADO_INFO_WEBCAM; } 
+                    else if (seleccion == 11) { estado = ESTADO_INFO_CHROMA; scrollChroma = 0; } 
+                    else if (seleccion == 12) { estado = ESTADO_INFO_3D; } 
+                    else if (seleccion == 0) { Mix_PauseMusic(); EjecutarWebcam(renderer, fuenteMini, esIngles); Mix_ResumeMusic(); } 
+                    else if (seleccion == 1) { Mix_PauseMusic(); EjecutarChroma(renderer, fuenteMini, ROOT_PATH); Mix_ResumeMusic(); } 
+                    else if (seleccion == 2) { Mix_PauseMusic(); EjecutarGenerador3D(renderer, fuenteMini, esIngles); Mix_ResumeMusic(); } 
+                    if (!WHBProcIsRunning()) { appRunning = false; break; }
+                    delayInput = 30; 
+                } 
+            }
         } else if (estado == ESTADO_INFO_WEBCAM) {
              SDL_SetRenderDrawColor(renderer, 20, 20, 30, 255); SDL_RenderClear(renderer); DibujarTextoCentrado(renderer, fuenteGrande, "Webcam Info", 60, colY);
              const char* t1 = esIngles ? "Clean Feed Mode: No UI, Full Screen." : "Modo Limpio: Sin interfaz, Pantalla Completa."; const char* t2 = esIngles ? "Use with Capture Card." : "Usalo con Capturadora."; const char* t3 = esIngles ? "Inspiration Video:" : "Video de Inspiracion:";
@@ -377,6 +404,18 @@ int main(int argc, char **argv) {
              if (esIngles) DibujarBarraInferiorGlobal(renderer, fuenteMini, "(D-Pad) Scroll", "(B) Back", ""); else DibujarBarraInferiorGlobal(renderer, fuenteMini, "(Cruceta) Desplazar", "(B) Atras", "");
              if (down) scrollChroma += 15; if (up) scrollChroma -= 15; int maxScroll = totalH - viewH; if (scrollChroma < 0) scrollChroma = 0; if (scrollChroma > maxScroll) scrollChroma = maxScroll; if (btnB && delayInput == 0) { estado = ESTADO_MAS_OPCIONES; seleccion=1; delayInput = 30; }
         
+        } else if (estado == ESTADO_INFO_3D) {
+             SDL_SetRenderDrawColor(renderer, 20, 20, 30, 255); SDL_RenderClear(renderer); 
+             DibujarTextoCentrado(renderer, fuenteGrande, esIngles ? "Image to 3D Guide" : "Guia: Imagen a 3D", 60, colY);
+             const char* t1 = esIngles ? "Use the stylus to draw over your photo." : "Usa el lapiz para dibujar sobre tu foto y moldea a tu gusto"; 
+             const char* t2 = esIngles ? "A Whisk3D for Wii U experiment, it will be progressively improved." : "Un experimento de Whisk3D for Wii U, se mejorara progresivamente"; 
+             const char* t3 = esIngles ? "Use the 3D model export system from a device to Wii U with caution." : "Usa el sistema de exportacion de modelos 3D de un dispositivo a Wii U con cuidado";
+             DibujarTextoCentrado(renderer, fuenteMini, t1, 150, colW); 
+             DibujarTextoCentrado(renderer, fuenteMini, t2, 180, colW); 
+             DibujarTextoCentrado(renderer, fuenteMini, t3, 240, {0,255,255,255});
+             if (esIngles) DibujarBarraInferiorGlobal(renderer, fuenteMini, "", "(B) Back", ""); else DibujarBarraInferiorGlobal(renderer, fuenteMini, "", "(B) Atras", "");
+             if (btnB && delayInput == 0) { estado = ESTADO_MAS_OPCIONES; seleccion=2; delayInput = 30; }
+             
         } else if (estado == ESTADO_SUBMENU_MODOS) { 
             
             // --- DIBUJADO DE CABECERA (Más abajo para no tapar la lente) ---
@@ -428,15 +467,15 @@ int main(int argc, char **argv) {
         } else if (estado == ESTADO_UPDATES) {
              DibujarTextoCentrado(renderer, fuenteGrande, esIngles ? "Changelog" : "Novedades", 160, colY); int y = 250; int gap = 45; SDL_Color colTxt = colW;
              if(esIngles){ 
-                DibujarTextoCentrado(renderer, fuentePequena, "v1.6.8 - Video + Audio Update!", y, colTxt);
-                DibujarTextoCentrado(renderer, fuenteMini, "- NEW: Native Video Recording WITH AUDIO!", y + gap*1.5, colTxt);
-                DibujarTextoCentrado(renderer, fuenteMini, "- NEW: Gallery now works as a full Media Player. ", y + gap*2.5, colTxt);
-                DibujarTextoCentrado(renderer, fuenteMini, "- UI NEW: Beautiful new camera menu buttons", y + gap*3.5, colTxt);
+                DibujarTextoCentrado(renderer, fuentePequena, "v1.8.2 - Video + Audio Update!", y, colTxt);
+                DibujarTextoCentrado(renderer, fuenteMini, "- NEW: 3D figure generation system using interactive molds", y + gap*1.5, colTxt);
+                DibujarTextoCentrado(renderer, fuenteMini, "- NEW: You can now share videos and 3D figures (.avi and .obj)", y + gap*2.5, colTxt);
+                DibujarTextoCentrado(renderer, fuenteMini, "- Internal improvements", y + gap*3.5, colTxt);
             } else { 
-                DibujarTextoCentrado(renderer, fuentePequena, "v1.6.8 - La actualizacion de Audio + Video", y, colTxt);
-                DibujarTextoCentrado(renderer, fuenteMini, "- NUEVO: Grabación de video nativo CON AUDIO!", y + gap*1.5, colTxt);
-                DibujarTextoCentrado(renderer, fuenteMini, "- NUEVO: La Galería ahora es un reproductor multimedia", y + gap*2.5, colTxt);
-                DibujarTextoCentrado(renderer, fuenteMini, "- UI: Nuevos botones en el modo cámara.", y + gap*3.5, colTxt);
+                DibujarTextoCentrado(renderer, fuentePequena, "v1.8.2 - Mejoras y editor de figuras 3D", y, colTxt);
+                DibujarTextoCentrado(renderer, fuenteMini, "- NUEVO: Sistema de generacion de figuras en 3D mediante moldes interactivos", y + gap*1.5, colTxt);
+                DibujarTextoCentrado(renderer, fuenteMini, "- NUEVO: Ya se puede compartir videos y figuras 3D (.avi y .obj)", y + gap*2.5, colTxt);
+                DibujarTextoCentrado(renderer, fuenteMini, "- Mejoras internas", y + gap*3.5, colTxt);
             }
              if (esIngles) DibujarBarraInferiorGlobal(renderer, fuenteMini, "", "(B) Back", ""); else DibujarBarraInferiorGlobal(renderer, fuenteMini, "", "(B) Atras", "");
              if (btnB && delayInput == 0) { estado = ESTADO_MENU_PRINCIPAL; delayInput = 30; }

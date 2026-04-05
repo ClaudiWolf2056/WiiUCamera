@@ -66,9 +66,6 @@ std::vector<FotoEntry> EscanearMedia(const std::string& directorio, int &outF, i
     return lista;
 }
 
-// ============================================================================
-// NUEVO REPRODUCTOR: Lee Video e Inyecta el Audio al Canal 1 de SDL_Mixer
-// ============================================================================
 void ReproducirVideoAVI(SDL_Renderer* renderer, TTF_Font* font, const std::string& ruta, bool esIngles) {
     FILE* f = fopen(ruta.c_str(), "rb"); if (!f) return;
     
@@ -91,9 +88,8 @@ void ReproducirVideoAVI(SDL_Renderer* renderer, TTF_Font* font, const std::strin
         if (pSz > 500000) { isOldVideo = true; vW = 640; vH = 480; } 
     }
     
-    // --- MAGIA PURA: Extraer Audio y enviarlo a SDL_Mixer ---
     fseek(f, moviOffset, SEEK_SET);
-    uint32_t maxAudioBytes = 32000 * 2 * 60; // Max 60 segundos de memoria
+    uint32_t maxAudioBytes = 32000 * 2 * 60; 
     uint8_t* wavBuf = (uint8_t*)malloc(maxAudioBytes + 44);
     uint32_t audioSize = 0;
     
@@ -115,24 +111,19 @@ void ReproducirVideoAVI(SDL_Renderer* renderer, TTF_Font* font, const std::strin
     
     Mix_Chunk* audioChunk = NULL;
     if (audioSize > 0 && wavBuf) {
-        // Escribir cabecera WAV estándar en RAM para engañar a SDL_Mixer
         auto W32 = [&](int o, uint32_t v) { wavBuf[o]=v&0xFF; wavBuf[o+1]=(v>>8)&0xFF; wavBuf[o+2]=(v>>16)&0xFF; wavBuf[o+3]=(v>>24)&0xFF; };
         auto W16 = [&](int o, uint16_t v) { wavBuf[o]=v&0xFF; wavBuf[o+1]=(v>>8)&0xFF; };
         memcpy(wavBuf, "RIFF", 4); W32(4, 36 + audioSize); memcpy(wavBuf+8, "WAVEfmt ", 8);
         W32(16, 16); W16(20, 1); W16(22, 1); W32(24, 32000); W32(28, 64000); W16(32, 2); W16(34, 16);
         memcpy(wavBuf+36, "data", 4); W32(40, audioSize);
-        
         SDL_RWops* rw = SDL_RWFromMem(wavBuf, 44 + audioSize);
         audioChunk = Mix_LoadWAV_RW(rw, 1); 
     }
     if (wavBuf) free(wavBuf);
-    // -------------------------------------------------------------
 
-    // Regresar al inicio para comenzar a pintar el video
     fseek(f, moviOffset, SEEK_SET); 
     SDL_Texture* videoTex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, vW, vH); 
     uint32_t maxFrameSize = vW * vH * 4; 
-    
     uint8_t* rawBuf = (uint8_t*)memalign(256, maxFrameSize + 8192); 
     uint32_t* argbBuf = (uint32_t*)memalign(256, vW * vH * 4);
     
@@ -146,9 +137,8 @@ void ReproducirVideoAVI(SDL_Renderer* renderer, TTF_Font* font, const std::strin
     uint32_t tickStart = SDL_GetTicks();
     uint32_t targetDelay = isOldVideo ? 33 : 50; 
     
-    // Pausar música de fondo e Iniciar audio del video
     if (Mix_PlayingMusic()) Mix_PauseMusic();
-    if (audioChunk) Mix_PlayChannel(1, audioChunk, 0); // Empujar audio al canal 1 de la Wii U
+    if (audioChunk) Mix_PlayChannel(1, audioChunk, 0); 
     
     while (reproduciendo && WHBProcIsRunning()) {
         SDL_Event event; while (SDL_PollEvent(&event)) { if (event.type == SDL_QUIT) reproduciendo = false; }
@@ -158,27 +148,18 @@ void ReproducirVideoAVI(SDL_Renderer* renderer, TTF_Font* font, const std::strin
             if (vpad.trigger & VPAD_BUTTON_B) reproduciendo = false; 
             if (vpad.trigger & VPAD_BUTTON_A) { 
                 pausado = !pausado; 
-                if (audioChunk) { if (pausado) Mix_Pause(1); else Mix_Resume(1); } // Pausa mágica de audio
+                if (audioChunk) { if (pausado) Mix_Pause(1); else Mix_Resume(1); }
             }
         }
         
         if (!pausado) { 
             char chunkId[5] = {0}; uint32_t chunkSizeLE = 0;
-            if (fread(chunkId, 1, 4, f) != 4) { 
-                fseek(f, moviOffset, SEEK_SET); // Loop del video
-                if(audioChunk) Mix_PlayChannel(1, audioChunk, 0); // Loop del audio
-                continue; 
-            }
+            if (fread(chunkId, 1, 4, f) != 4) { fseek(f, moviOffset, SEEK_SET); if(audioChunk) Mix_PlayChannel(1, audioChunk, 0); continue; }
             fread(&chunkSizeLE, 1, 4, f);
-            
             uint32_t chunkSize = ((chunkSizeLE >> 24) & 0xFF) | ((chunkSizeLE >> 8) & 0xFF00) | ((chunkSizeLE << 8) & 0xFF0000) | ((chunkSizeLE << 24) & 0xFF000000);
             uint32_t readSize = chunkSize + (chunkSize % 2); 
             
-            if (strncmp(chunkId, "idx1", 4) == 0) { 
-                fseek(f, moviOffset, SEEK_SET); 
-                if(audioChunk) Mix_PlayChannel(1, audioChunk, 0); 
-                continue; 
-            }
+            if (strncmp(chunkId, "idx1", 4) == 0) { fseek(f, moviOffset, SEEK_SET); if(audioChunk) Mix_PlayChannel(1, audioChunk, 0); continue; }
             if (readSize > maxFrameSize + 8192) { fseek(f, readSize, SEEK_CUR); continue; } 
             
             fread(rawBuf, 1, readSize, f);
@@ -202,7 +183,6 @@ void ReproducirVideoAVI(SDL_Renderer* renderer, TTF_Font* font, const std::strin
                 if (now - tickStart < targetDelay) SDL_Delay(targetDelay - (now - tickStart)); 
                 tickStart = SDL_GetTicks();
             } 
-            // Ignoramos el bloque "01wb" porque SDL_Mixer ya lo está cantando
         }
         
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); SDL_RenderClear(renderer);
@@ -215,11 +195,10 @@ void ReproducirVideoAVI(SDL_Renderer* renderer, TTF_Font* font, const std::strin
         SDL_RenderPresent(renderer); 
     }
     
-    // Limpieza general
     Mix_HaltChannel(1);
     if (audioChunk) Mix_FreeChunk(audioChunk);
     free(rawBuf); free(argbBuf); SDL_DestroyTexture(videoTex); fclose(f);
-    if (Mix_PausedMusic()) Mix_ResumeMusic(); // Devolverle su trabajo a la música de fondo
+    if (Mix_PausedMusic()) Mix_ResumeMusic(); 
 }
 
 int EjecutarGaleria(SDL_Renderer* renderer, TTF_Font* font, bool esIngles, int tipoGaleria, Mix_Music* musicPtr = NULL, bool musicEnabled = true) {
@@ -278,6 +257,7 @@ int EjecutarGaleria(SDL_Renderer* renderer, TTF_Font* font, bool esIngles, int t
                 float ms=10.0f*zoom; 
                 if((vpad.hold&VPAD_BUTTON_RIGHT)||vpad.leftStick.x>0.5) px-=ms; if((vpad.hold&VPAD_BUTTON_LEFT)||vpad.leftStick.x<-0.5) px+=ms;
                 if((vpad.hold&VPAD_BUTTON_UP)||vpad.leftStick.y>0.5) py+=ms; if((vpad.hold&VPAD_BUTTON_DOWN)||vpad.leftStick.y<-0.5) py-=ms;
+                // Botón Y para compartir fotos o videos desde el visor individual
                 if((vpad.trigger & VPAD_BUTTON_Y)) { SDL_SetRenderDrawColor(renderer,0,0,0,200); SDL_RenderClear(renderer); SDL_RenderPresent(renderer); if(IniciarServidor()) share=true; else { msg=serverStatusMsg; tmr=120; } delay=30; }
             }
             SDL_SetRenderDrawColor(renderer,0,0,0,255); SDL_RenderClear(renderer);
@@ -299,14 +279,20 @@ int EjecutarGaleria(SDL_Renderer* renderer, TTF_Font* font, bool esIngles, int t
                     if(((vpad.hold&VPAD_BUTTON_DOWN)||vpad.leftStick.y<-0.5) && sel+COLS<tot){ sel+=COLS; delay=8; } 
                     if(((vpad.hold&VPAD_BUTTON_UP)||vpad.leftStick.y>0.5) && sel-COLS>=0){ sel-=COLS; delay=8; }
                     if((vpad.trigger & VPAD_BUTTON_A)) { if(fotos[sel].tipo == TIPO_VIDEO) { ReproducirVideoAVI(renderer, font, fotos[sel].rutaCompleta, esIngles); delay=20; } else { verFoto=true; delay=20; } }
-                    if((vpad.trigger & VPAD_BUTTON_Y) && fotos[sel].tipo != TIPO_VIDEO) { SDL_SetRenderDrawColor(renderer,0,0,0,200); SDL_RenderClear(renderer); SDL_RenderPresent(renderer); if(IniciarServidor()) share=true; else { msg=serverStatusMsg; tmr=120; } delay=30; }
+                    
+                    // LÓGICA CORREGIDA: Habilitado para Compartir Videos
+                    if((vpad.trigger & VPAD_BUTTON_Y)) { SDL_SetRenderDrawColor(renderer,0,0,0,200); SDL_RenderClear(renderer); SDL_RenderPresent(renderer); if(IniciarServidor()) share=true; else { msg=serverStatusMsg; tmr=120; } delay=30; }
+                    
                     if((vpad.trigger & VPAD_BUTTON_X)) { borrar=true; delay=20; }
                     if(vpad.tpNormal.touched) {
                         int tx=MapearGaleria(vpad.tpNormal.x, GAL_ADC_MIN_X, GAL_ADC_MAX_X, GAL_APP_W, false);
                         int ty=MapearGaleria(vpad.tpNormal.y, GAL_ADC_MIN_Y, GAL_ADC_MAX_Y, GAL_APP_H, true);
                         if(ty>620) {
                             if(tx>50 && tx<230){ if(fotos[sel].tipo == TIPO_VIDEO) ReproducirVideoAVI(renderer, font, fotos[sel].rutaCompleta, esIngles); else verFoto=true; delay=20; }
-                            if(tx>260 && tx<440 && fotos[sel].tipo!=TIPO_VIDEO){ if(IniciarServidor()) share=true; delay=30; }
+                            
+                            // LÓGICA CORREGIDA TÁCTIL: Botón Share activado para todos
+                            if(tx>260 && tx<440){ if(IniciarServidor()) share=true; delay=30; }
+                            
                             if(tx>470 && tx<650){ borrar=true; delay=20; }
                             if(tx>1050 && tx<1230){ salir=true; delay=20; }
                         } else { float gy=ty+scroll-MARGIN_TOP; if(gy>=0 && tx>=MARGIN_X){ int c=(tx-MARGIN_X)/(CELL_W+GAP); int rw=(int)(gy/(CELL_H+GAP)); if(c>=0 && c<COLS){ int i=rw*COLS+c; if(i>=0 && i<tot) sel=i; } } }
@@ -339,8 +325,17 @@ int EjecutarGaleria(SDL_Renderer* renderer, TTF_Font* font, bool esIngles, int t
         
         if(tot == 0) { const char* msgEmpty = esIngles ? "No images found." : "No se encontraron imagenes."; SDL_Surface* sem=TTF_RenderText_Blended(font,msgEmpty,{150,150,150,255}); if(sem){ SDL_Texture* t=SDL_CreateTextureFromSurface(renderer,sem); SDL_Rect r={(1280-sem->w)/2,360,sem->w,sem->h}; SDL_RenderCopy(renderer,t,NULL,&r); SDL_FreeSurface(sem); SDL_DestroyTexture(t); } }
 
-        if(fotos.size() > 0 && fotos[sel].tipo == TIPO_VIDEO) { DibujarBtnG(renderer, 50, 640, 180, 50, {0,150,0,255}, esIngles?"(A) Play":"(A) Ver", font); DibujarBtnG(renderer, 260, 640, 180, 50, {50,50,50,255}, "-", font); DibujarBtnG(renderer, 470, 640, 180, 50, {150,0,0,255}, esIngles?"(X) Delete":"(X) Borrar", font); } 
-        else if (fotos.size() > 0) { DibujarBtnG(renderer, 50, 640, 180, 50, {0,150,0,255}, esIngles?"(A) View":"(A) Ver", font); DibujarBtnG(renderer, 260, 640, 180, 50, {0,100,200,255}, esIngles?"(Y) Share":"(Y) Compartir", font); DibujarBtnG(renderer, 470, 640, 180, 50, {150,0,0,255}, esIngles?"(X) Delete":"(X) Borrar", font); } 
+        // INTERFAZ DE BOTONES CORREGIDA
+        if(fotos.size() > 0 && fotos[sel].tipo == TIPO_VIDEO) { 
+            DibujarBtnG(renderer, 50, 640, 180, 50, {0,150,0,255}, esIngles?"(A) Play":"(A) Ver", font); 
+            DibujarBtnG(renderer, 260, 640, 180, 50, {0,100,200,255}, esIngles?"(Y) Share":"(Y) Compartir", font); 
+            DibujarBtnG(renderer, 470, 640, 180, 50, {150,0,0,255}, esIngles?"(X) Delete":"(X) Borrar", font); 
+        } 
+        else if (fotos.size() > 0) { 
+            DibujarBtnG(renderer, 50, 640, 180, 50, {0,150,0,255}, esIngles?"(A) View":"(A) Ver", font); 
+            DibujarBtnG(renderer, 260, 640, 180, 50, {0,100,200,255}, esIngles?"(Y) Share":"(Y) Compartir", font); 
+            DibujarBtnG(renderer, 470, 640, 180, 50, {150,0,0,255}, esIngles?"(X) Delete":"(X) Borrar", font); 
+        } 
         else { DibujarBtnG(renderer, 50, 640, 180, 50, {50,50,50,255}, "-", font); DibujarBtnG(renderer, 260, 640, 180, 50, {50,50,50,255}, "-", font); DibujarBtnG(renderer, 470, 640, 180, 50, {50,50,50,255}, "-", font); }
         
         DibujarBtnG(renderer, 1050, 640, 180, 50, {100,100,100,255}, esIngles?"(B) Back":"(B) Volver", font);
