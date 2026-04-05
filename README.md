@@ -1,4 +1,4 @@
-# 📸 WiiUCamera v1.6.8 (Beta)
+# 📸 WiiUCamera v1.8.2
 
 [English](#english) | [Español](#español)
 
@@ -93,10 +93,10 @@ make
 
 Upon completion, you will get a WiiUCamera.wuhb file ready to use.
 
-📝 Changelog (v1.6.8)
-- NEW: Added native audio+video synchronization for recording!
-- FIX: Upgraded the gallery to support video playback with audio demuxing via SDL_mixer.
-- DEV FIX: Added proper hardware freeing (MICUninit) upon exiting recorder.
+📝 Changelog (v1.8.2)
+- NEW: Use the 3D model export system from a device to Wii U with caution.
+- NEW: You can now share videos and 3D figures (.avi and .obj)
+- DEV FIX: Internal improvements
 
 🤝 Credits and Acknowledgements
 Main Developer: ClaudiWolf2056
@@ -192,10 +192,10 @@ make
 
 Al finalizar, obtendrás el archivo WiiUCamera.wuhb listo para usar.
 
-📝 Registro de cambios (v1.6.8)
-- NUEVO: Se agregó sincronización nativa de audio y video para la grabación de videos
-- FIX: Se actualizó la galería para que admita la reproducción de video con demultiplexación de audio mediante SDL_mixer.
-- DEV FIX: Se agregó la liberación de hardware adecuada (MICUninit) al salir de la grabadora.
+📝 Registro de cambios (v1.8.2)
+- NUEVO: Utiliza con precaución el sistema de exportación de modelos 3D desde un dispositivo a Wii U.
+- NUEVO: Ahora puedes compartir vídeos y figuras 3D (.avi y .obj).
+- CORRECCIÓN DE DESARROLLO: Mejoras internas.
 
 🤝 Créditos y agradecimientos
 Desarrollador principal: ClaudiWolf2056
