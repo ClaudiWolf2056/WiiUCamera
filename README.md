@@ -94,7 +94,7 @@ make
 Upon completion, you will get a WiiUCamera.wuhb file ready to use.
 
 📝 Changelog (v1.8.2)
-- NEW: Use the 3D model export system from a device to Wii U with caution.
+- NEW: 3D figure generation system using interactive molds.
 - NEW: You can now share videos and 3D figures (.avi and .obj)
 - DEV FIX: Internal improvements
 
@@ -193,7 +193,7 @@ make
 Al finalizar, obtendrás el archivo WiiUCamera.wuhb listo para usar.
 
 📝 Registro de cambios (v1.8.2)
-- NUEVO: Utiliza con precaución el sistema de exportación de modelos 3D desde un dispositivo a Wii U.
+- NUEVO: Sistema de generacion de figuras en 3D mediante moldes interactivos.
 - NUEVO: Ahora puedes compartir vídeos y figuras 3D (.avi y .obj).
 - CORRECCIÓN DE DESARROLLO: Mejoras internas.
 
