@@ -93,9 +93,9 @@ make
 
 Upon completion, you will get a WiiUCamera.wuhb file ready to use.
 
-📝 Changelog (v1.8.2)
-- NEW: 3D figure generation system using interactive molds.
-- NEW: You can now share videos and 3D figures (.avi and .obj)
+📝 Changelog (v1.9.5)
+- NEW: AI Uptade!
+- NEW: New effects camera
 - DEV FIX: Internal improvements
 
 🤝 Credits and Acknowledgements
@@ -192,9 +192,9 @@ make
 
 Al finalizar, obtendrás el archivo WiiUCamera.wuhb listo para usar.
 
-📝 Registro de cambios (v1.8.2)
-- NUEVO: Sistema de generacion de figuras en 3D mediante moldes interactivos.
-- NUEVO: Ahora puedes compartir vídeos y figuras 3D (.avi y .obj).
+📝 Registro de cambios (v1.9.5)
+- NUEVO: Actualizacion de IA
+- NUEVO: Nuevos efectos de camara
 - CORRECCIÓN DE DESARROLLO: Mejoras internas.
 
 🤝 Créditos y agradecimientos
