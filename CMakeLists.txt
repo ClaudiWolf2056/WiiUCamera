@@ -39,6 +39,11 @@ target_link_libraries(WiiUCamera
     SDL2_image
     SDL2_mixer
     SDL2
+    curl
+    mbedtls
+    mbedcrypto
+    mbedx509
+    z
     
     # 2. Fuentes y procesamiento de texto
     freetype
