@@ -1,4 +1,4 @@
-# 📸 WiiUCamera v1.8.2
+# 📸 WiiUCamera v1.9.5
 
 [English](#english) | [Español](#español)
 
