@@ -28,8 +28,9 @@ using namespace qrcodegen;
 #include "webcam.h" 
 #include "chroma.h" 
 #include "editor3d.h"
+#include "ia_menu.h"
 
-const char* APP_VERSION = "v1.8.2"; 
+const char* APP_VERSION = "v1.9.5"; 
 
 std::string ROOT_PATH = "";
 void DetectarRutaRaiz() {
@@ -66,7 +67,8 @@ SDL_Texture* GenerarTexturaQR(SDL_Renderer* renderer, const char* texto) {
 enum EstadoApp { 
     ESTADO_MENU_PRINCIPAL, ESTADO_SUBMENU_MODOS, ESTADO_UPDATES, ESTADO_AGRADECIMIENTOS, 
     ESTADO_CAMARA, ESTADO_GALERIA, ESTADO_EDITOR, 
-    ESTADO_MAS_OPCIONES, ESTADO_INFO_WEBCAM, ESTADO_INFO_CHROMA, ESTADO_INFO_3D, ESTADO_AJUSTES 
+    ESTADO_MAS_OPCIONES, ESTADO_INFO_WEBCAM, ESTADO_INFO_CHROMA, ESTADO_INFO_3D, ESTADO_AJUSTES,
+    ESTADO_IA_MENU, ESTADO_INFO_IA
 };
 
 const float MAIN_ADC_MIN_X = 100.0f; const float MAIN_ADC_MAX_X = 3950.0f;
@@ -250,10 +252,11 @@ int main(int argc, char **argv) {
                     if (i==0) { SDL_Rect rInfo = { ((1280-600)/2) + 610, startY + (i*60), 120, 50 }; if (VerificarToqueBoton(touchX, touchY, rInfo)) { ReproducirSonidoSelect(); estado = ESTADO_INFO_WEBCAM; delayInput = 30; } }
                     if (i==1) { SDL_Rect rInfo = { ((1280-600)/2) + 610, startY + (i*60), 120, 50 }; if (VerificarToqueBoton(touchX, touchY, rInfo)) { ReproducirSonidoSelect(); estado = ESTADO_INFO_CHROMA; scrollChroma = 0; delayInput = 30; } }
                     if (i==2) { SDL_Rect rInfo = { ((1280-600)/2) + 610, startY + (i*60), 120, 50 }; if (VerificarToqueBoton(touchX, touchY, rInfo)) { ReproducirSonidoSelect(); estado = ESTADO_INFO_3D; delayInput = 30; } }
+                    if (i==3) { SDL_Rect rInfo = { ((1280-600)/2) + 610, startY + (i*60), 120, 50 }; if (VerificarToqueBoton(touchX, touchY, rInfo)) { ReproducirSonidoSelect(); estado = ESTADO_INFO_IA; delayInput = 30; } }
                 }
                 if (touchY > 600) { estado = ESTADO_MENU_PRINCIPAL; seleccion = 5; delayInput=30; }
             }
-            if ((estado == ESTADO_INFO_WEBCAM || estado == ESTADO_INFO_3D) && delayInput == 0 && touchY > 600) { estado = ESTADO_MAS_OPCIONES; delayInput = 30; ReproducirSonidoSelect(); }
+            if ((estado == ESTADO_INFO_WEBCAM || estado == ESTADO_INFO_3D || estado == ESTADO_INFO_IA) && delayInput == 0 && touchY > 600) { estado = ESTADO_MAS_OPCIONES; delayInput = 30; ReproducirSonidoSelect(); }
             if (estado == ESTADO_AJUSTES && delayInput == 0) {
                 if (touchY > 230 && touchY < 290) { selAjustes = 0; float pct = (float)(touchX - 340) / 600.0f; if (pct < 0) pct = 0; if (pct > 1) pct = 1; g_VolMusica = (int)(pct * 128); ActualizarVolumen(); }
                 if (touchY > 360 && touchY < 420) { selAjustes = 1; float pct = (float)(touchX - 340) / 600.0f; if (pct < 0) pct = 0; if (pct > 1) pct = 1; g_VolSFX = (int)(pct * 128); ActualizarVolumen(); }
@@ -357,12 +360,12 @@ int main(int argc, char **argv) {
             }
         } else if (estado == ESTADO_MAS_OPCIONES) {
             DibujarTextoCentrado(renderer, fuenteGrande, esIngles ? "More Options" : "Mas Opciones", 160, colY);
-            const char* opMoreEN[] = { "Start Webcam (Beta)", "Chroma Key (Green Screen)", "Image to 3D", "Soon..." }; 
-            const char* opMoreES[] = { "Ejecutar Webcam (Beta)", "Chroma Key (Pantalla Verde)", "Imagen a 3D", "Pronto..." };
+            const char* opMoreEN[] = { "Start Webcam (Beta)", "Chroma Key (Green Screen)", "Image to 3D", "AI Tools" }; 
+            const char* opMoreES[] = { "Ejecutar Webcam (Beta)", "Chroma Key (Pantalla Verde)", "Imagen a 3D", "Herramientas IA" };
             int startY = 300;
             for (int i = 0; i < 4; i++) { 
                 SDL_Color c = (i==seleccion) ? colY : colW; DibujarTextoCentrado(renderer, fuentePequena, esIngles ? opMoreEN[i] : opMoreES[i], startY + (i*60), c); 
-                if (i <= 2) { 
+                if (i <= 3) { 
                     int idInfo = 10 + i; SDL_Rect rInfo = { ((1280-600)/2) + 610, startY + (i*60), 120, 50 }; 
                     SDL_Color cInfo = (seleccion == idInfo) ? colY : (SDL_Color){0,150,255,255}; 
                     SDL_SetRenderDrawColor(renderer, cInfo.r, cInfo.g, cInfo.b, cInfo.a); SDL_RenderFillRect(renderer, &rInfo); 
@@ -374,17 +377,19 @@ int main(int argc, char **argv) {
             if (delayInput == 0) { 
                 if (down) { if (seleccion >= 10) seleccion -= 9; else { seleccion++; if (seleccion>=4) seleccion=0; } delayInput=VEL_CURSOR; moved=true; } 
                 if (up) { if (seleccion >= 10) seleccion -= 10; else { seleccion--; if (seleccion<0) seleccion=3; } delayInput=VEL_CURSOR; moved=true; } 
-                if (right && (seleccion >= 0 && seleccion <= 2)) { seleccion += 10; delayInput=VEL_CURSOR; moved=true; } 
-                if (left && (seleccion >= 10 && seleccion <= 12)) { seleccion -= 10; delayInput=VEL_CURSOR; moved=true; } 
+                if (right && (seleccion >= 0 && seleccion <= 3)) { seleccion += 10; delayInput=VEL_CURSOR; moved=true; } 
+                if (left && (seleccion >= 10 && seleccion <= 13)) { seleccion -= 10; delayInput=VEL_CURSOR; moved=true; } 
                 if (moved) ReproducirSonidoMover(); if (btnB) { estado = ESTADO_MENU_PRINCIPAL; seleccion=5; delayInput = 30; } 
                 if (btnA) { 
                     ReproducirSonidoSelect(); 
                     if (seleccion == 10) { estado = ESTADO_INFO_WEBCAM; } 
                     else if (seleccion == 11) { estado = ESTADO_INFO_CHROMA; scrollChroma = 0; } 
                     else if (seleccion == 12) { estado = ESTADO_INFO_3D; } 
+                    else if (seleccion == 13) { estado = ESTADO_INFO_IA; } 
                     else if (seleccion == 0) { Mix_PauseMusic(); EjecutarWebcam(renderer, fuenteMini, esIngles); Mix_ResumeMusic(); } 
                     else if (seleccion == 1) { Mix_PauseMusic(); EjecutarChroma(renderer, fuenteMini, ROOT_PATH); Mix_ResumeMusic(); } 
                     else if (seleccion == 2) { Mix_PauseMusic(); EjecutarGenerador3D(renderer, fuenteMini, esIngles); Mix_ResumeMusic(); } 
+                    else if (seleccion == 3) { estado = ESTADO_IA_MENU; delayInput = 30; }
                     if (!WHBProcIsRunning()) { appRunning = false; break; }
                     delayInput = 30; 
                 } 
@@ -416,7 +421,25 @@ int main(int argc, char **argv) {
              if (esIngles) DibujarBarraInferiorGlobal(renderer, fuenteMini, "", "(B) Back", ""); else DibujarBarraInferiorGlobal(renderer, fuenteMini, "", "(B) Atras", "");
              if (btnB && delayInput == 0) { estado = ESTADO_MAS_OPCIONES; seleccion=2; delayInput = 30; }
              
-        } else if (estado == ESTADO_SUBMENU_MODOS) { 
+        } else if (estado == ESTADO_INFO_IA) {
+             SDL_SetRenderDrawColor(renderer, 20, 20, 30, 255); SDL_RenderClear(renderer); 
+             DibujarTextoCentrado(renderer, fuenteGrande, esIngles ? "AI Tools Info" : "Guia: Herramientas IA", 60, colY);
+             
+             const char* t1 = esIngles ? "Use: Select a photo to get a detailed AI analysis." : "Uso: Selecciona una imagen para obtener un analisis detallado."; 
+             const char* t2 = esIngles ? "Requires internet connection. First request may take 45s to boot." : "Requiere conexion a internet. El primer uso puede tardar 45s en cargar."; 
+             const char* t3 = esIngles ? "Note: Images are processed securely and discarded immediately." : "Nota: Las imagenes se procesan de forma segura y no se almacenan.";
+             const char* t4 = esIngles ? "Experimental beta phase, expect errors" : "Fase beta experimental, espere errores";
+             
+             DibujarTextoCentrado(renderer, fuentePequena, t1, 150, colW); 
+             DibujarTextoCentrado(renderer, fuenteMini, t2, 210, colW); 
+             DibujarTextoCentrado(renderer, fuenteMini, t3, 260, {0,255,255,255});
+             DibujarTextoCentrado(renderer, fuenteMini, t3, 260, {0,255,255,255});
+             
+             if (esIngles) DibujarBarraInferiorGlobal(renderer, fuenteMini, "", "(B) Back", ""); else DibujarBarraInferiorGlobal(renderer, fuenteMini, "", "(B) Atras", "");
+             if (btnB && delayInput == 0) { estado = ESTADO_MAS_OPCIONES; seleccion=3; delayInput = 30; }
+             
+        } else if (estado == ESTADO_SUBMENU_MODOS) {
+
             
             // --- DIBUJADO DE CABECERA (Más abajo para no tapar la lente) ---
             SDL_Texture* tHead = esIngles ? texHeadCam_EN : texHeadCam_ES;
@@ -467,14 +490,14 @@ int main(int argc, char **argv) {
         } else if (estado == ESTADO_UPDATES) {
              DibujarTextoCentrado(renderer, fuenteGrande, esIngles ? "Changelog" : "Novedades", 160, colY); int y = 250; int gap = 45; SDL_Color colTxt = colW;
              if(esIngles){ 
-                DibujarTextoCentrado(renderer, fuentePequena, "v1.8.2 - Video + Audio Update!", y, colTxt);
-                DibujarTextoCentrado(renderer, fuenteMini, "- NEW: 3D figure generation system using interactive molds", y + gap*1.5, colTxt);
-                DibujarTextoCentrado(renderer, fuenteMini, "- NEW: You can now share videos and 3D figures (.avi and .obj)", y + gap*2.5, colTxt);
+                DibujarTextoCentrado(renderer, fuentePequena, "v1.9.5 - AI UPTADE!", y, colTxt);
+                DibujarTextoCentrado(renderer, fuenteMini, "- NEW: AI UPTADE!", y + gap*1.5, colTxt);
+                DibujarTextoCentrado(renderer, fuenteMini, "- NEW: New effects camera", y + gap*2.5, colTxt);
                 DibujarTextoCentrado(renderer, fuenteMini, "- Internal improvements", y + gap*3.5, colTxt);
             } else { 
-                DibujarTextoCentrado(renderer, fuentePequena, "v1.8.2 - Mejoras y editor de figuras 3D", y, colTxt);
-                DibujarTextoCentrado(renderer, fuenteMini, "- NUEVO: Sistema de generacion de figuras en 3D mediante moldes interactivos", y + gap*1.5, colTxt);
-                DibujarTextoCentrado(renderer, fuenteMini, "- NUEVO: Ya se puede compartir videos y figuras 3D (.avi y .obj)", y + gap*2.5, colTxt);
+                DibujarTextoCentrado(renderer, fuentePequena, "v1.9.2 - ACTUALIZACION DE IA", y, colTxt);
+                DibujarTextoCentrado(renderer, fuenteMini, "- NUEVO: Implementacion de IA en esta app", y + gap*1.5, colTxt);
+                DibujarTextoCentrado(renderer, fuenteMini, "- NUEVO: Nuevos efectos locos de camara", y + gap*2.5, colTxt);
                 DibujarTextoCentrado(renderer, fuenteMini, "- Mejoras internas", y + gap*3.5, colTxt);
             }
              if (esIngles) DibujarBarraInferiorGlobal(renderer, fuenteMini, "", "(B) Back", ""); else DibujarBarraInferiorGlobal(renderer, fuenteMini, "", "(B) Atras", "");
@@ -538,11 +561,19 @@ int main(int argc, char **argv) {
                 if (g_VolMusica > 0) { if (Mix_PausedMusic()) Mix_ResumeMusic(); else Mix_PlayMusic(g_MusicaFondo, -1); }
                 SDL_RenderClear(renderer); SDL_RenderPresent(renderer); 
                 
-                
                 estado = ESTADO_SUBMENU_MODOS; 
                 
             } else { appRunning = false; }
             delayInput = 30;
+            
+        } else if (estado == ESTADO_IA_MENU) {
+            Mix_PauseMusic(); 
+            EjecutarMenuIA(renderer, fuenteGrande, fuentePequena, fuenteMini, esIngles);
+            
+            if (!WHBProcIsRunning()) { appRunning = false; break; }
+            
+            if(g_VolMusica > 0) Mix_ResumeMusic(); 
+            estado = ESTADO_MAS_OPCIONES; seleccion = 3; delayInput = 30;
         }
         
         if (dedo) DibujarCursorTactil(renderer, touchX, touchY);
