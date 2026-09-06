@@ -18,7 +18,7 @@ struct PiezaPuzzle {
     SDL_Rect rectOrigen;
 };
 
-// Mini explorador para elegir la imagen de la galería de la Wii U
+// Mini explorador con aspecto limpio
 inline std::string ElegirFotoParaPuzzle(SDL_Renderer* renderer, TTF_Font* font, bool esIngles) {
     std::vector<std::string> listaFotos;
     DIR* dir = opendir("fs:/vol/external01/WiiUCamera Files");
@@ -28,6 +28,7 @@ inline std::string ElegirFotoParaPuzzle(SDL_Renderer* renderer, TTF_Font* font, 
             std::string n = ent->d_name;
             if (n.length() > 4) {
                 std::string ext = n.substr(n.length()-4);
+                std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
                 if (ext == ".jpg" || ext == ".png" || ext == ".bmp") {
                     listaFotos.push_back("fs:/vol/external01/WiiUCamera Files/" + n);
                 }
@@ -35,6 +36,9 @@ inline std::string ElegirFotoParaPuzzle(SDL_Renderer* renderer, TTF_Font* font, 
         }
         closedir(dir);
     }
+    
+    // Sort descending by name so newest are likely first
+    std::sort(listaFotos.begin(), listaFotos.end(), std::greater<std::string>());
 
     if (listaFotos.empty()) return "";
 
@@ -60,35 +64,57 @@ inline std::string ElegirFotoParaPuzzle(SDL_Renderer* renderer, TTF_Font* font, 
         SDL_RenderClear(renderer);
 
         SDL_Color colW = {255,255,255,255};
-        SDL_Surface* sTit = TTF_RenderText_Blended(font, esIngles ? "Select a Photo for the Puzzle" : "Selecciona una Foto para armar", {255,255,0,255});
+        SDL_Surface* sTit = TTF_RenderText_Blended(font, esIngles ? "Select a Photo to build" : "Selecciona una Foto para armar", {255,255,0,255});
         if (sTit) {
             SDL_Texture* tTit = SDL_CreateTextureFromSurface(renderer, sTit);
-            SDL_Rect rTit = {(1280 - sTit->w)/2, 50, sTit->w, sTit->h};
+            SDL_Rect rTit = {(1280 - sTit->w)/2, 60, sTit->w, sTit->h};
             SDL_RenderCopy(renderer, tTit, NULL, &rTit);
             SDL_FreeSurface(sTit); SDL_DestroyTexture(tTit);
         }
 
-        int startY = 150;
-        for (int i = 0; i < 10 && (i + seleccion - 5) < (int)listaFotos.size(); i++) {
-            int idx = seleccion - 5 + i;
+        int startY = 160;
+        int maxMostrar = 8;
+        
+        for (int i = 0; i < maxMostrar; i++) {
+            int idx = seleccion - (maxMostrar / 2) + i;
             if (idx >= 0 && idx < (int)listaFotos.size()) {
                 std::string nombre = listaFotos[idx].substr(listaFotos[idx].find_last_of("/") + 1);
                 SDL_Color c = (idx == seleccion) ? SDL_Color{0,255,0,255} : colW;
+                
+                SDL_Rect bgList = { (1280 - 600) / 2, startY + (i * 50), 600, 45 };
+                if (idx == seleccion) {
+                    SDL_SetRenderDrawColor(renderer, 50, 50, 150, 255);
+                    SDL_RenderFillRect(renderer, &bgList);
+                }
+
                 SDL_Surface* sTxt = TTF_RenderText_Blended(font, nombre.c_str(), c);
                 if (sTxt) {
                     SDL_Texture* tTxt = SDL_CreateTextureFromSurface(renderer, sTxt);
-                    SDL_Rect rTxt = {(1280 - sTxt->w)/2, startY + (i * 40), sTxt->w, sTxt->h};
+                    SDL_Rect rTxt = {(1280 - sTxt->w)/2, startY + (i * 50) + (45 - sTxt->h)/2, sTxt->w, sTxt->h};
                     SDL_RenderCopy(renderer, tTxt, NULL, &rTxt);
                     SDL_FreeSurface(sTxt); SDL_DestroyTexture(tTxt);
                 }
             }
         }
+        
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 200); 
+        SDL_Rect bar = {0, 660, 1280, 60}; 
+        SDL_RenderFillRect(renderer, &bar);
+        
+        SDL_Surface* sBot = TTF_RenderText_Blended(font, esIngles ? "(A) Confirm  (B) Back" : "(A) Confirmar  (B) Atrás", {255, 255, 255, 255});
+        if (sBot) {
+            SDL_Texture* tBot = SDL_CreateTextureFromSurface(renderer, sBot);
+            SDL_Rect rBot = {(1280 - sBot->w)/2, 675, sBot->w, sBot->h};
+            SDL_RenderCopy(renderer, tBot, NULL, &rBot);
+            SDL_FreeSurface(sBot); SDL_DestroyTexture(tBot);
+        }
+
         SDL_RenderPresent(renderer);
     }
     return elegida;
 }
 
-// Lógica principal del Rompecabezas 3x3
+// Lógica principal del Rompecabezas
 inline void EjecutarPuzzle(SDL_Renderer* renderer, TTF_Font* font, bool esIngles) {
     std::string rutaFoto = ElegirFotoParaPuzzle(renderer, font, esIngles);
     if (rutaFoto == "") return;
@@ -102,13 +128,20 @@ inline void EjecutarPuzzle(SDL_Renderer* renderer, TTF_Font* font, bool esIngles
     const int GRID = 3; 
     std::vector<PiezaPuzzle> piezas;
     
-    int boardSize = 600; 
+    int boardSize = 540; 
     int pieceScrnW = boardSize / GRID;
     int pieceScrnH = boardSize / GRID;
     int pieceImgW = imgW / GRID;
     int pieceImgH = imgH / GRID;
-    int startX = (1280 - boardSize) / 2;
+    
+    // Posicionar tablero a la izquierda
+    int startX = 140;
     int startY = (720 - boardSize) / 2;
+    
+    // Posicionar imagen referencial a la derecha
+    int refSize = 360;
+    int refX = 820;
+    int refY = (720 - refSize) / 2;
 
     for (int y = 0; y < GRID; y++) {
         for (int x = 0; x < GRID; x++) {
@@ -176,22 +209,41 @@ inline void EjecutarPuzzle(SDL_Renderer* renderer, TTF_Font* font, bool esIngles
 
         if (vpad.trigger & VPAD_BUTTON_B) jugando = false;
 
-        SDL_SetRenderDrawColor(renderer, 30, 30, 30, 255);
+        SDL_SetRenderDrawColor(renderer, 30, 30, 35, 255);
         SDL_RenderClear(renderer);
+        
+        // Dibujar imagen de referencia a la derecha con un marco suave
+        SDL_Rect rRef = {refX, refY, refSize, refSize};
+        SDL_Rect rRefBorder = {refX - 4, refY - 4, refSize + 8, refSize + 8};
+        SDL_SetRenderDrawColor(renderer, 60, 60, 70, 255);
+        SDL_RenderFillRect(renderer, &rRefBorder);
+        SDL_RenderCopy(renderer, texFoto, NULL, &rRef);
+
+        // Gap / separación entre piezas para simular cuadrados sueltos
+        int gap = 3; 
 
         for (size_t i = 0; i < piezas.size(); i++) {
             int curCol = piezas[i].idActual % GRID;
             int curRow = piezas[i].idActual / GRID;
+            
+            // Área delimitadora interactiva (invisible)
             piezas[i].rectDestino = {startX + curCol * pieceScrnW, startY + curRow * pieceScrnH, pieceScrnW, pieceScrnH};
             
-            SDL_RenderCopy(renderer, texFoto, &piezas[i].rectOrigen, &piezas[i].rectDestino);
+            // Área visual acortada por el margen 
+            SDL_Rect rectVisual = {
+                startX + curCol * pieceScrnW + gap,
+                startY + curRow * pieceScrnH + gap,
+                pieceScrnW - gap * 2,
+                pieceScrnH - gap * 2
+            };
+            
+            SDL_RenderCopy(renderer, texFoto, &piezas[i].rectOrigen, &rectVisual);
             
             if ((int)i == piezaSeleccionada) {
-                SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
-                SDL_RenderDrawRect(renderer, &piezas[i].rectDestino);
-            } else {
-                SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-                SDL_RenderDrawRect(renderer, &piezas[i].rectDestino);
+                SDL_SetRenderDrawColor(renderer, 255, 230, 0, 255);
+                SDL_RenderDrawRect(renderer, &rectVisual);
+                SDL_Rect rOut = {rectVisual.x-1, rectVisual.y-1, rectVisual.w+2, rectVisual.h+2};
+                SDL_RenderDrawRect(renderer, &rOut);
             }
         }
 
@@ -203,7 +255,7 @@ inline void EjecutarPuzzle(SDL_Renderer* renderer, TTF_Font* font, bool esIngles
         SDL_Surface* sTime = TTF_RenderText_Blended(font, bufTiempo, {255,255,255,255});
         if (sTime) {
             SDL_Texture* tTime = SDL_CreateTextureFromSurface(renderer, sTime);
-            SDL_Rect rTime = {50, 50, sTime->w, sTime->h};
+            SDL_Rect rTime = {40, 40, sTime->w, sTime->h};
             SDL_RenderCopy(renderer, tTime, NULL, &rTime);
             SDL_FreeSurface(sTime); SDL_DestroyTexture(tTime);
         }
@@ -212,7 +264,7 @@ inline void EjecutarPuzzle(SDL_Renderer* renderer, TTF_Font* font, bool esIngles
             SDL_Surface* sWin = TTF_RenderText_Blended(font, esIngles ? "PUZZLE CLEARED!" : "¡ROMPECABEZAS ARMADO!", {0,255,0,255});
             if (sWin) {
                 SDL_Texture* tWin = SDL_CreateTextureFromSurface(renderer, sWin);
-                SDL_Rect rWin = {(1280 - sWin->w)/2, 20, sWin->w, sWin->h};
+                SDL_Rect rWin = {(1280 - sWin->w)/2, 40, sWin->w, sWin->h};
                 SDL_RenderCopy(renderer, tWin, NULL, &rWin);
                 SDL_FreeSurface(sWin); SDL_DestroyTexture(tWin);
             }

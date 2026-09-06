@@ -29,8 +29,9 @@ using namespace qrcodegen;
 #include "chroma.h" 
 #include "editor3d.h"
 #include "ia_menu.h"
+#include "puzzle.h"
 
-const char* APP_VERSION = "v1.9.5"; 
+const char* APP_VERSION = "v2.0.0"; 
 
 std::string ROOT_PATH = "";
 void DetectarRutaRaiz() {
@@ -68,7 +69,7 @@ enum EstadoApp {
     ESTADO_MENU_PRINCIPAL, ESTADO_SUBMENU_MODOS, ESTADO_UPDATES, ESTADO_AGRADECIMIENTOS, 
     ESTADO_CAMARA, ESTADO_GALERIA, ESTADO_EDITOR, 
     ESTADO_MAS_OPCIONES, ESTADO_INFO_WEBCAM, ESTADO_INFO_CHROMA, ESTADO_INFO_3D, ESTADO_AJUSTES,
-    ESTADO_IA_MENU, ESTADO_INFO_IA
+    ESTADO_IA_MENU, ESTADO_INFO_IA, ESTADO_INFO_VIBE, ESTADO_INFO_PUZZLE 
 };
 
 const float MAIN_ADC_MIN_X = 100.0f; const float MAIN_ADC_MAX_X = 3950.0f;
@@ -183,12 +184,12 @@ int main(int argc, char **argv) {
     SDL_Texture* iconUpd = CargarTextura(renderer, "icon_updates.png");
     SDL_Texture* iconCred = CargarTextura(renderer, "icon_credits.png");
     SDL_Texture* iconSet = CargarTextura(renderer, "icon_settings.png");
+    SDL_Texture* iconVibe = CargarTextura(renderer, "icon_vibe.png");
     
     SDL_Texture* texGuide1 = CargarTextura(renderer, "guide_chroma.png");
     SDL_Texture* texGuide2 = CargarTextura(renderer, "guide_magic.png");
     SDL_Texture* texQR = GenerarTexturaQR(renderer, "https://www.youtube.com/watch?v=E8xQsfuRHuA");
 
-    
     SDL_Texture* texHeadCam_EN = CargarTextura(renderer, "header_camera_en.png");
     SDL_Texture* texHeadCam_ES = CargarTextura(renderer, "header_camera_es.png");
     SDL_Texture* texBtnPhoto_EN = CargarTextura(renderer, "button_photo_en.png");
@@ -200,13 +201,24 @@ int main(int argc, char **argv) {
     SDL_Texture* texBtnMic_EN = CargarTextura(renderer, "button_mic_en.png");
     SDL_Texture* texBtnMic_ES = CargarTextura(renderer, "button_mic_es.png");
     
+    // Novedad: Texturas del menú Más Opciones
+    SDL_Texture* tMoreWebcamEN = CargarTextura(renderer, "btn_more_webcam_en.png");
+    SDL_Texture* tMoreWebcamES = CargarTextura(renderer, "btn_more_webcam_es.png");
+    SDL_Texture* tMoreChromaEN = CargarTextura(renderer, "btn_more_chroma_en.png");
+    SDL_Texture* tMoreChromaES = CargarTextura(renderer, "btn_more_chroma_es.png");
+    SDL_Texture* tMore3DEN = CargarTextura(renderer, "btn_more_3d_en.png");
+    SDL_Texture* tMore3DES = CargarTextura(renderer, "btn_more_3d_es.png");
+    SDL_Texture* tMoreAiEN = CargarTextura(renderer, "btn_more_ai_en.png");
+    SDL_Texture* tMoreAiES = CargarTextura(renderer, "btn_more_ai_es.png");
+    SDL_Texture* tMorePuzzleEN = CargarTextura(renderer, "btn_more_puzzle_en.png");
+    SDL_Texture* tMorePuzzleES = CargarTextura(renderer, "btn_more_puzzle_es.png");
 
     SDL_Color colW = {255, 255, 255, 255}; SDL_Color colY = {255, 255, 0, 255};
     
     bool appRunning = true; int estado = ESTADO_MENU_PRINCIPAL; int seleccion = 2; bool esIngles = true;
-    const int VEL_CURSOR = 12; int delayInput = 0; SDL_Rect btnRects[8]; 
+    const int VEL_CURSOR = 12; int delayInput = 0; SDL_Rect btnRects[9]; 
     int touchX = -100, touchY = -100; bool dedo = false; float scrollY = 0; int tStartY = -1;
-    int selAjustes = 0; float scrollChroma = 0.0f;
+    int selAjustes = 0; float scrollChroma = 0.0f; float scrollVibe = 0.0f;
 
     while (appRunning && WHBProcIsRunning()) {
         SDL_Event event; while (SDL_PollEvent(&event)) { if (event.type == SDL_QUIT) appRunning = false; }
@@ -220,16 +232,17 @@ int main(int argc, char **argv) {
             if (tStartY == -1) tStartY = touchY;
             if (estado == ESTADO_INFO_CHROMA && tStartY != -1) { int d = touchY - tStartY; if (abs(d) > 5) { scrollChroma -= d; if (scrollChroma < 0) scrollChroma = 0; tStartY = touchY; } }
             if (estado == ESTADO_AGRADECIMIENTOS && tStartY != -1) { int d = touchY - tStartY; if (abs(d) > 5) { scrollY -= d; if (scrollY < 0) scrollY = 0; tStartY = touchY; } }
-            if (estado != ESTADO_MENU_PRINCIPAL && estado != ESTADO_AJUSTES && estado != ESTADO_MAS_OPCIONES && estado != ESTADO_SUBMENU_MODOS && estado != ESTADO_INFO_WEBCAM && estado != ESTADO_INFO_CHROMA && estado != ESTADO_INFO_3D && touchY > 600 && touchX > 1100 && delayInput == 0) {
+            if (estado == ESTADO_INFO_VIBE && tStartY != -1) { int d = touchY - tStartY; if (abs(d) > 5) { scrollVibe -= d * 2; if (scrollVibe < 0) scrollVibe = 0; tStartY = touchY; } }
+            if (estado != ESTADO_MENU_PRINCIPAL && estado != ESTADO_AJUSTES && estado != ESTADO_MAS_OPCIONES && estado != ESTADO_SUBMENU_MODOS && estado != ESTADO_INFO_WEBCAM && estado != ESTADO_INFO_CHROMA && estado != ESTADO_INFO_3D && estado != ESTADO_INFO_VIBE && touchY > 600 && touchX > 1100 && delayInput == 0) {
                  if (estado != ESTADO_CAMARA && estado != ESTADO_GALERIA && estado != ESTADO_EDITOR) {
                     estado = ESTADO_MENU_PRINCIPAL; delayInput = 30; ReproducirSonidoSelect(); tStartY = -1;
                  }
             }
             if (estado == ESTADO_MENU_PRINCIPAL && delayInput == 0) {
-                for(int i=0; i<8; i++) {
+                for(int i=0; i<9; i++) {
                     if (VerificarToqueBoton(touchX, touchY, btnRects[i])) {
                          seleccion = i; ReproducirSonidoSelect();
-                         if (i==0) estado = ESTADO_UPDATES; else if (i==1) { estado = ESTADO_AGRADECIMIENTOS; scrollY=0; }
+                         if (i==0) estado = ESTADO_UPDATES; else if (i==1) { estado = ESTADO_AGRADECIMIENTOS; scrollY=0; } else if (i==8) { estado = ESTADO_INFO_VIBE; }
                          else if (i==2) { estado = ESTADO_SUBMENU_MODOS; seleccion=0; } else if (i==3) estado = ESTADO_GALERIA;
                          else if (i==4) estado = ESTADO_EDITOR; else if (i==5) { estado = ESTADO_MAS_OPCIONES; seleccion = 0; }
                          else if (i==6) esIngles = !esIngles; else if (i==7) { estado = ESTADO_AJUSTES; selAjustes = 0; } 
@@ -238,25 +251,39 @@ int main(int argc, char **argv) {
                 }
             }
             if (estado == ESTADO_MAS_OPCIONES && delayInput == 0) {
-                int startY = 300; 
-                for(int i=0; i<4; i++) {
-                    SDL_Rect rT = { (1280-600)/2, startY + (i*60), 600, 50 };
+                int btnW = 250; int btnH = 75;
+                int totalGroupW = btnW + 20 + 120;
+                int startX = (1280 - totalGroupW) / 2;
+                int startY = 240; 
+                
+                for(int i=0; i<5; i++) {
+                    SDL_Rect rT = { startX, startY + (i*85), btnW, btnH };
                     if (VerificarToqueBoton(touchX, touchY, rT)) { 
                         seleccion = i; ReproducirSonidoSelect(); 
                         if(i==0) { Mix_PauseMusic(); EjecutarWebcam(renderer, fuenteMini, esIngles); Mix_ResumeMusic(); }
                         else if(i==1) { Mix_PauseMusic(); EjecutarChroma(renderer, fuenteMini, ROOT_PATH); Mix_ResumeMusic(); } 
                         else if(i==2) { Mix_PauseMusic(); EjecutarGenerador3D(renderer, fuenteMini, esIngles); Mix_ResumeMusic(); } 
+                        else if(i==3) { estado = ESTADO_IA_MENU; delayInput = 30; }
+                        else if(i==4) { Mix_PauseMusic(); EjecutarPuzzle(renderer, fuenteMini, esIngles); if(g_VolMusica > 0) Mix_ResumeMusic(); delayInput = 30;}
+                        
                         if (!WHBProcIsRunning()) { appRunning = false; break; }
                         delayInput = 30; tStartY = -1; 
                     }
-                    if (i==0) { SDL_Rect rInfo = { ((1280-600)/2) + 610, startY + (i*60), 120, 50 }; if (VerificarToqueBoton(touchX, touchY, rInfo)) { ReproducirSonidoSelect(); estado = ESTADO_INFO_WEBCAM; delayInput = 30; } }
-                    if (i==1) { SDL_Rect rInfo = { ((1280-600)/2) + 610, startY + (i*60), 120, 50 }; if (VerificarToqueBoton(touchX, touchY, rInfo)) { ReproducirSonidoSelect(); estado = ESTADO_INFO_CHROMA; scrollChroma = 0; delayInput = 30; } }
-                    if (i==2) { SDL_Rect rInfo = { ((1280-600)/2) + 610, startY + (i*60), 120, 50 }; if (VerificarToqueBoton(touchX, touchY, rInfo)) { ReproducirSonidoSelect(); estado = ESTADO_INFO_3D; delayInput = 30; } }
-                    if (i==3) { SDL_Rect rInfo = { ((1280-600)/2) + 610, startY + (i*60), 120, 50 }; if (VerificarToqueBoton(touchX, touchY, rInfo)) { ReproducirSonidoSelect(); estado = ESTADO_INFO_IA; delayInput = 30; } }
+                    
+                    SDL_Rect rInfo = { rT.x + btnW + 20, startY + (i*85) + 12, 120, 50 }; 
+                    if (VerificarToqueBoton(touchX, touchY, rInfo)) { 
+                        ReproducirSonidoSelect(); 
+                        if(i==0) estado = ESTADO_INFO_WEBCAM;
+                        if(i==1) { estado = ESTADO_INFO_CHROMA; scrollChroma = 0; }
+                        if(i==2) estado = ESTADO_INFO_3D;
+                        if(i==3) estado = ESTADO_INFO_IA;
+                        if(i==4) estado = ESTADO_INFO_PUZZLE;
+                        delayInput = 30; 
+                    }
                 }
                 if (touchY > 600) { estado = ESTADO_MENU_PRINCIPAL; seleccion = 5; delayInput=30; }
             }
-            if ((estado == ESTADO_INFO_WEBCAM || estado == ESTADO_INFO_3D || estado == ESTADO_INFO_IA) && delayInput == 0 && touchY > 600) { estado = ESTADO_MAS_OPCIONES; delayInput = 30; ReproducirSonidoSelect(); }
+            if ((estado == ESTADO_INFO_WEBCAM || estado == ESTADO_INFO_3D || estado == ESTADO_INFO_IA || estado == ESTADO_INFO_PUZZLE) && delayInput == 0 && touchY > 600) { estado = ESTADO_MAS_OPCIONES; delayInput = 30; ReproducirSonidoSelect(); }
             if (estado == ESTADO_AJUSTES && delayInput == 0) {
                 if (touchY > 230 && touchY < 290) { selAjustes = 0; float pct = (float)(touchX - 340) / 600.0f; if (pct < 0) pct = 0; if (pct > 1) pct = 1; g_VolMusica = (int)(pct * 128); ActualizarVolumen(); }
                 if (touchY > 360 && touchY < 420) { selAjustes = 1; float pct = (float)(touchX - 340) / 600.0f; if (pct < 0) pct = 0; if (pct > 1) pct = 1; g_VolSFX = (int)(pct * 128); ActualizarVolumen(); }
@@ -293,8 +320,7 @@ int main(int argc, char **argv) {
 
         if (estado == ESTADO_MENU_PRINCIPAL) {
             DibujarTextoCentrado(renderer, fuenteGrande, esIngles ? "Welcome!" : "Bienvenido!", 160, colW);
-            
-            DibujarTextoCentrado(renderer, fuenteMini, esIngles ? "Touchscreen now works!" : "El tactil ya funciona!", 240, colY);
+            DibujarTextoCentrado(renderer, fuenteMini, esIngles ? "Touchscreen now works!" : "El tactil ya funciona!", 230, colY);
             DibujarTextoCentrado(renderer, fuenteMini, esIngles ? "Remember to return here before closing the app" : "Recuerda volver a este menu antes de cerrar la aplicacion", 270, colY);
             
             if (esIngles) DibujarBarraInferiorGlobal(renderer, fuenteMini, APP_VERSION, "(D-Pad) Navigate", "(A) Select"); 
@@ -306,6 +332,7 @@ int main(int argc, char **argv) {
             
             DibujarBoton(renderer, iconUpd, 30, 130, 80, 80, (seleccion==0), &btnRects[0]); 
             DibujarBoton(renderer, iconCred, 130, 130, 80, 80, (seleccion==1), &btnRects[1]);
+            DibujarBoton(renderer, iconVibe, 230, 130, 80, 80, (seleccion==8), &btnRects[8]);
             
             int btnW = 250; int btnH = 100; int gap = 30;
             int r1Y = 340; int galX = (1280 - btnW) / 2; int startX = galX - gap - btnW; int editX = galX + gap + btnW; 
@@ -328,16 +355,17 @@ int main(int argc, char **argv) {
             DibujarTextoCentrado(renderer, fuenteMini, txtSD, 630, colW);
             
             if (delayInput == 0) {
-                if (right) { if(seleccion==0) seleccion=1; else if(seleccion==2) seleccion=3; else if(seleccion==3) seleccion=4; else if(seleccion==5) seleccion=6; else if(seleccion==6) seleccion=7; delayInput=VEL_CURSOR; moved=true; }
-                if (left) { if(seleccion==1) seleccion=0; else if(seleccion==3) seleccion=2; else if(seleccion==4) seleccion=3; else if(seleccion==6) seleccion=5; else if(seleccion==7) seleccion=6; delayInput=VEL_CURSOR; moved=true; }
-                if (down) { if(seleccion<=1) seleccion=2; else if(seleccion>=2 && seleccion<=4) seleccion=5; else if(seleccion>=5 && seleccion<=6) seleccion=7; delayInput=VEL_CURSOR; moved=true; }
-                if (up) { if(seleccion==7) seleccion=6; else if(seleccion>=5 && seleccion<=6) seleccion=3; else if(seleccion==2||seleccion==3) seleccion=0; else if(seleccion==4) seleccion=1; delayInput=VEL_CURSOR; moved=true; }
+                if (right) { if(seleccion==0) seleccion=1; else if(seleccion==1) seleccion=8; else if(seleccion==2) seleccion=3; else if(seleccion==3) seleccion=4; else if(seleccion==5) seleccion=6; else if(seleccion==6) seleccion=7; delayInput=VEL_CURSOR; moved=true; }
+                if (left) { if(seleccion==8) seleccion=1; else if(seleccion==1) seleccion=0; else if(seleccion==3) seleccion=2; else if(seleccion==4) seleccion=3; else if(seleccion==6) seleccion=5; else if(seleccion==7) seleccion=6; delayInput=VEL_CURSOR; moved=true; }
+                if (down) { if(seleccion==8) seleccion=4; else if(seleccion<=1) seleccion=2; else if(seleccion>=2 && seleccion<=4) seleccion=5; else if(seleccion>=5 && seleccion<=6) seleccion=7; delayInput=VEL_CURSOR; moved=true; }
+                if (up) { if(seleccion==7) seleccion=6; else if(seleccion>=5 && seleccion<=6) seleccion=3; else if(seleccion==2||seleccion==3) seleccion=0; else if(seleccion==4) seleccion=8; delayInput=VEL_CURSOR; moved=true; }
                 if (moved) ReproducirSonidoMover();
                 if (btnA) { ReproducirSonidoSelect();
                     if (seleccion==0) estado=ESTADO_UPDATES; else if (seleccion==1) { estado=ESTADO_AGRADECIMIENTOS; scrollY=0; }
                     else if (seleccion==2) { estado=ESTADO_SUBMENU_MODOS; seleccion=0; } else if (seleccion==3) estado=ESTADO_GALERIA; 
                     else if (seleccion==4) estado=ESTADO_EDITOR; else if (seleccion==5) { estado=ESTADO_MAS_OPCIONES; seleccion=0; }
-                    else if (seleccion==6) esIngles=!esIngles; else if (seleccion==7) { estado=ESTADO_AJUSTES; selAjustes=0; } 
+                    else if (seleccion==6) esIngles=!esIngles; else if (seleccion==7) { estado=ESTADO_AJUSTES; selAjustes=0; }
+                    else if (seleccion==8) { estado=ESTADO_INFO_VIBE; } 
                     delayInput=20;
                 }
             }
@@ -360,36 +388,64 @@ int main(int argc, char **argv) {
             }
         } else if (estado == ESTADO_MAS_OPCIONES) {
             DibujarTextoCentrado(renderer, fuenteGrande, esIngles ? "More Options" : "Mas Opciones", 160, colY);
-            const char* opMoreEN[] = { "Start Webcam (Beta)", "Chroma Key (Green Screen)", "Image to 3D", "AI Tools" }; 
-            const char* opMoreES[] = { "Ejecutar Webcam (Beta)", "Chroma Key (Pantalla Verde)", "Imagen a 3D", "Herramientas IA" };
-            int startY = 300;
-            for (int i = 0; i < 4; i++) { 
-                SDL_Color c = (i==seleccion) ? colY : colW; DibujarTextoCentrado(renderer, fuentePequena, esIngles ? opMoreEN[i] : opMoreES[i], startY + (i*60), c); 
-                if (i <= 3) { 
-                    int idInfo = 10 + i; SDL_Rect rInfo = { ((1280-600)/2) + 610, startY + (i*60), 120, 50 }; 
-                    SDL_Color cInfo = (seleccion == idInfo) ? colY : (SDL_Color){0,150,255,255}; 
-                    SDL_SetRenderDrawColor(renderer, cInfo.r, cInfo.g, cInfo.b, cInfo.a); SDL_RenderFillRect(renderer, &rInfo); 
-                    SDL_Surface* s=TTF_RenderText_Blended(fuenteMini, "[ ! ] Info", {255,255,255,255}); 
-                    if(s){ SDL_Texture* t=SDL_CreateTextureFromSurface(renderer,s); SDL_Rect r={rInfo.x + (120-s->w)/2, rInfo.y + (50-s->h)/2, s->w, s->h}; SDL_RenderCopy(renderer,t,NULL,&r); SDL_FreeSurface(s); SDL_DestroyTexture(t); } 
+            
+            SDL_Texture* texList[5];
+            if (esIngles) {
+                texList[0] = tMoreWebcamEN; texList[1] = tMoreChromaEN; texList[2] = tMore3DEN; texList[3] = tMoreAiEN; texList[4] = tMorePuzzleEN;
+            } else {
+                texList[0] = tMoreWebcamES; texList[1] = tMoreChromaES; texList[2] = tMore3DES; texList[3] = tMoreAiES; texList[4] = tMorePuzzleES;
+            }
+            
+            int btnW = 250; int btnH = 75;
+            int totalGroupW = btnW + 20 + 120;
+            int startX = (1280 - totalGroupW) / 2;
+            int startY = 240; 
+            
+            for (int i = 0; i < 5; i++) { 
+                SDL_Rect rBtn = { startX, startY + (i*85), btnW, btnH };
+                DibujarBoton(renderer, texList[i], rBtn.x, rBtn.y, rBtn.w, rBtn.h, (seleccion == i), NULL);
+                
+                int idInfo = 10 + i; 
+                SDL_Rect rInfo = { rBtn.x + btnW + 20, startY + (i*85) + 12, 120, 50 }; 
+                SDL_Color cInfo = (seleccion == idInfo) ? colY : (SDL_Color){0,150,255,255}; 
+                
+                SDL_SetRenderDrawColor(renderer, cInfo.r, cInfo.g, cInfo.b, cInfo.a); 
+                SDL_RenderFillRect(renderer, &rInfo); 
+                
+                SDL_Surface* s=TTF_RenderText_Blended(fuenteMini, "[ ! ] Info", {255,255,255,255}); 
+                if(s){ 
+                    SDL_Texture* t=SDL_CreateTextureFromSurface(renderer,s); 
+                    SDL_Rect r={rInfo.x + (120-s->w)/2, rInfo.y + (50-s->h)/2, s->w, s->h}; 
+                    SDL_RenderCopy(renderer,t,NULL,&r); 
+                    SDL_FreeSurface(s); SDL_DestroyTexture(t); 
                 } 
             }
-            if (esIngles) DibujarBarraInferiorGlobal(renderer, fuenteMini, "(A) Select - (Right) Info", "(B) Back", ""); else DibujarBarraInferiorGlobal(renderer, fuenteMini, "(A) Seleccionar - (Der) Info", "(B) Atras", "");
+            
+            if (esIngles) DibujarBarraInferiorGlobal(renderer, fuenteMini, "(A) Select - (Right) Info", "(B) Back", ""); 
+            else DibujarBarraInferiorGlobal(renderer, fuenteMini, "(A) Seleccionar - (Der) Info", "(B) Atras", "");
+            
             if (delayInput == 0) { 
-                if (down) { if (seleccion >= 10) seleccion -= 9; else { seleccion++; if (seleccion>=4) seleccion=0; } delayInput=VEL_CURSOR; moved=true; } 
-                if (up) { if (seleccion >= 10) seleccion -= 10; else { seleccion--; if (seleccion<0) seleccion=3; } delayInput=VEL_CURSOR; moved=true; } 
-                if (right && (seleccion >= 0 && seleccion <= 3)) { seleccion += 10; delayInput=VEL_CURSOR; moved=true; } 
-                if (left && (seleccion >= 10 && seleccion <= 13)) { seleccion -= 10; delayInput=VEL_CURSOR; moved=true; } 
-                if (moved) ReproducirSonidoMover(); if (btnB) { estado = ESTADO_MENU_PRINCIPAL; seleccion=5; delayInput = 30; } 
+                if (down) { if (seleccion >= 10) { seleccion++; if(seleccion>=15) seleccion=10; } else { seleccion++; if (seleccion>=5) seleccion=0; } delayInput=VEL_CURSOR; moved=true; } 
+                if (up) { if (seleccion >= 10) { seleccion--; if(seleccion<10) seleccion=14; } else { seleccion--; if (seleccion<0) seleccion=4; } delayInput=VEL_CURSOR; moved=true; } 
+                if (right && (seleccion >= 0 && seleccion <= 4)) { seleccion += 10; delayInput=VEL_CURSOR; moved=true; } 
+                if (left && (seleccion >= 10 && seleccion <= 14)) { seleccion -= 10; delayInput=VEL_CURSOR; moved=true; } 
+                if (moved) ReproducirSonidoMover(); 
+                
+                if (btnB) { estado = ESTADO_MENU_PRINCIPAL; seleccion=5; delayInput = 30; } 
                 if (btnA) { 
                     ReproducirSonidoSelect(); 
                     if (seleccion == 10) { estado = ESTADO_INFO_WEBCAM; } 
                     else if (seleccion == 11) { estado = ESTADO_INFO_CHROMA; scrollChroma = 0; } 
                     else if (seleccion == 12) { estado = ESTADO_INFO_3D; } 
                     else if (seleccion == 13) { estado = ESTADO_INFO_IA; } 
+                    else if (seleccion == 14) { estado = ESTADO_INFO_PUZZLE; } 
+                    
                     else if (seleccion == 0) { Mix_PauseMusic(); EjecutarWebcam(renderer, fuenteMini, esIngles); Mix_ResumeMusic(); } 
                     else if (seleccion == 1) { Mix_PauseMusic(); EjecutarChroma(renderer, fuenteMini, ROOT_PATH); Mix_ResumeMusic(); } 
                     else if (seleccion == 2) { Mix_PauseMusic(); EjecutarGenerador3D(renderer, fuenteMini, esIngles); Mix_ResumeMusic(); } 
                     else if (seleccion == 3) { estado = ESTADO_IA_MENU; delayInput = 30; }
+                    else if (seleccion == 4) { Mix_PauseMusic(); EjecutarPuzzle(renderer, fuenteMini, esIngles); if(g_VolMusica > 0) Mix_ResumeMusic(); delayInput = 30;} 
+                    
                     if (!WHBProcIsRunning()) { appRunning = false; break; }
                     delayInput = 30; 
                 } 
@@ -399,7 +455,7 @@ int main(int argc, char **argv) {
              const char* t1 = esIngles ? "Clean Feed Mode: No UI, Full Screen." : "Modo Limpio: Sin interfaz, Pantalla Completa."; const char* t2 = esIngles ? "Use with Capture Card." : "Usalo con Capturadora."; const char* t3 = esIngles ? "Inspiration Video:" : "Video de Inspiracion:";
              DibujarTextoCentrado(renderer, fuenteMini, t1, 130, colW); DibujarTextoCentrado(renderer, fuenteMini, t2, 160, colW); DibujarTextoCentrado(renderer, fuentePequena, t3, 220, {0,255,255,255}); if (texQR) { SDL_Rect rQR = { (1280-300)/2, 270, 300, 300 }; SDL_RenderCopy(renderer, texQR, NULL, &rQR); }
              if (esIngles) DibujarBarraInferiorGlobal(renderer, fuenteMini, "", "(B) Back", ""); else DibujarBarraInferiorGlobal(renderer, fuenteMini, "", "(B) Atras", "");
-             if (btnB && delayInput == 0) { estado = ESTADO_MAS_OPCIONES; seleccion=0; delayInput = 30; }
+             if (btnB && delayInput == 0) { estado = ESTADO_MAS_OPCIONES; seleccion=10; delayInput = 30; }
         } else if (estado == ESTADO_INFO_CHROMA) {
              SDL_SetRenderDrawColor(renderer, 20, 30, 20, 255); SDL_RenderClear(renderer); DibujarTextoCentrado(renderer, fuenteGrande, "Chroma Key Guide", 50, colY); SDL_Rect rClip = {0, 100, 1280, 560}; SDL_RenderSetClipRect(renderer, &rClip); int startY = 120 - (int)scrollChroma; SDL_Color cTit = {0, 255, 0, 255}; SDL_Color cTxt = colW; int spacing = 450; 
              DibujarTextoCentrado(renderer, fuentePequena, esIngles ? "1. Green Screen Mode (Default)" : "1. Modo Pantalla Verde", startY, cTit); if (esIngles) { DibujarTextoCentrado(renderer, fuenteMini, "Use a green cloth background.", startY + 40, cTxt); DibujarTextoCentrado(renderer, fuenteMini, "Wii U replaces it with the default or uploaded image.", startY + 70, cTxt); } else { DibujarTextoCentrado(renderer, fuenteMini, "Usa un estandarte de color verde.", startY + 40, cTxt); DibujarTextoCentrado(renderer, fuenteMini, "La Wii U lo reemplazara con la imagen (Default/Subida).", startY + 70, cTxt); } if (texGuide1) { SDL_Rect rI = {(1280-500)/2, startY + 100, 500, 280}; SDL_RenderCopy(renderer, texGuide1, NULL, &rI); }
@@ -407,8 +463,197 @@ int main(int argc, char **argv) {
              int y3 = y2 + spacing + 30; DibujarTextoCentrado(renderer, fuentePequena, esIngles ? "3. Custom Background" : "3. Fondo Personalizado", y3, cTit); DibujarTextoCentrado(renderer, fuenteMini, esIngles ? "Press (+) to upload via Wi-Fi (Phone/PC)." : "Presiona (+) para subir por Wi-Fi (Celular/PC).", y3 + 40, cTxt); DibujarTextoCentrado(renderer, fuenteMini, esIngles ? "Scan the QR code and select your image." : "Escanea el QR y selecciona tu imagen.", y3 + 70, cTxt); SDL_RenderSetClipRect(renderer, NULL); 
              int totalH = spacing * 3 + 100; int viewH = 560; if (totalH > viewH) { float pct = scrollChroma / (float)(totalH - viewH); int barH = viewH * viewH / totalH; int barY = 100 + (int)(pct * (viewH - barH)); SDL_SetRenderDrawColor(renderer, 50, 50, 50, 255); SDL_Rect bgBar = {1260, 100, 10, viewH}; SDL_RenderFillRect(renderer, &bgBar); SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255); SDL_Rect fgBar = {1260, barY, 10, barH}; SDL_RenderFillRect(renderer, &fgBar); }
              if (esIngles) DibujarBarraInferiorGlobal(renderer, fuenteMini, "(D-Pad) Scroll", "(B) Back", ""); else DibujarBarraInferiorGlobal(renderer, fuenteMini, "(Cruceta) Desplazar", "(B) Atras", "");
-             if (down) scrollChroma += 15; if (up) scrollChroma -= 15; int maxScroll = totalH - viewH; if (scrollChroma < 0) scrollChroma = 0; if (scrollChroma > maxScroll) scrollChroma = maxScroll; if (btnB && delayInput == 0) { estado = ESTADO_MAS_OPCIONES; seleccion=1; delayInput = 30; }
+             if (down) scrollChroma += 15; if (up) scrollChroma -= 15; int maxScroll = totalH - viewH; if (scrollChroma < 0) scrollChroma = 0; if (scrollChroma > maxScroll) scrollChroma = maxScroll; if (btnB && delayInput == 0) { estado = ESTADO_MAS_OPCIONES; seleccion=11; delayInput = 30; }
         
+       } else if (estado == ESTADO_INFO_VIBE) {
+            SDL_SetRenderDrawColor(renderer, 20, 20, 30, 255);
+            SDL_RenderClear(renderer);
+
+            SDL_Color colTitulo = {255, 255, 0, 255};
+            SDL_Color colSubtitulo = {0, 255, 0, 255};
+            SDL_Color colTexto = {255, 255, 255, 255};
+
+            DibujarTextoCentrado(renderer, fuenteGrande, esIngles ? "Vibe Coding in WiiUCamera" : "Vibe Coding en WiiUCamera", 60, colTitulo);
+            DibujarTextoCentrado(renderer, fuentePequena, esIngles ? "Read it until the end!" : "Leelo hasta el final!", 135, colSubtitulo);
+
+            const char* vibeTextES[] = {
+                "Hola y un saludo a cada uno de los usuarios de WiiUCamera.",
+                "Durante los testeos de esta actualizacion, decidi tomar todas", 
+                "sus sugerencias que me dejaron",
+                "por correo electronico y otros medios para poder incluir una parte de ustedes en esta app.",
+                "Sin embargo, me percate de que, ademas de sus sugerencias, hubo algunas criticas",
+                "con un tema algo peculiar.",
+                "",
+                "Las criticas son constructivas para el desarrollo de esta app y siempre son bien recibidas.",
+                "Pero creo que no me deje explicar con un tema y se genero una pequena disputa",
+                "por el supuesto uso excesivo del 100% IA para la creacion de esta app.",
+                "",
+                "ACLARACIONES:",
+                "1. Desde la primera version de mi proyecto, deje en claro que use a Gemini IA para la creacion de este.",
+                "Era mi primera vez programando para un entorno tan curioso que es la Wii U.",
+                "Pero parece que hubo una malinterpretacion en esto:",
+                "- Debido a que hay poca informacion o informacion no tan simplificada para uso general en mi idioma,",
+                "busque fuentes confiables, consulte por informacion que pudiera instalar las librerias necesarias",
+                "en el compilador para poder generar la app; pero como estaba perdido, necesite a la IA como",
+                "fuente de recursos de informacion y capacitarme en un lapso corto.",
+                "",
+                "2. Gemini me ayudo a ideas esteticas (y tambien, un usuario de Discord llamado y3ss1n para la estetica actual).",
+                "Porque, realmente la estetica antes del primer lanzamiento era horrible.",
+                "Me ayudo a inspirarme a mejorar aspectos para la impresion de ustedes, animandome a hacer bocetos a mano",
+                "y estructurando bloque por bloque.",
+                "Que si bien no es perfecto, me gusto el estilo pasado y actual, ya que es simple y ordenado.",
+                "",
+                "3. Si bien Gemini colaboro con el codigo fuente de este proyecto, yo fui quien se encargo de corregir multiples errores,",
+                "elaborar sintaxis enteras, innovar buscando de otros proyectos para tener una idea", 
+                "y consultando con cada uno que entienda del tema.",
+                "Tuve que sacar informacion que ni sabia que existia sobre el uso de la camara, y fue intento y error",
+                "durante madrugadas enteras durante enero de este anio!",
+                "Hacer (la mayoría) de los cuadros e imagenes en un editor digital a mano, componer la sinfonia del menu",
+                "y muchas otras cosas.",
+                "",
+                "4. Solo fue un apoyo, me ayudo corrigiendome y dandome pautas rapidas sobre como programar una app en WiiU.",
+                "Tambien aspectos morales, ya que tuve caidas (una vez tuve tantos errores despues de compilar mas de 53 veces en una noche).",
+                "",
+                "CONCLUSIONES:",
+                "Entiendo algunas molestias de alguno por parte de usar IA, entiendo que, sin alma humana",
+                "solo es una app vacia sintetica.",
+                "Pero les aseguro, que gran parte de mi dedicacion, tiempo y emociones estan en este proyecto dedicado",
+                "para cada uno de ustedes y darle una vida extra a la camara de Wii U.",
+                "",
+                "Ante ello, desde esta actualizacion, se minimizara el uso de IA y me comprometo ser pleno hasta",
+                "dejar de usarlo, y usar el 100% mis capacidades y conocimientos de programacion y estructuracion para esta app.",
+                "",
+                "Recuerden que siempre escuchare sus sugerencias para mejorar la app.",
+                "Y tambien que la IA siempre sera tu mejor aliado, siempre y cuando no la abuses.",
+                "",
+                "WiiUCamera recibira actualizaciones mas organicas despues de este mensaje :)",
+                "",
+                "Atentamente: ClaudiWolf2056",
+                "",
+                "PD: Puedes visitar mi pagina web: www.claudiwolf2056.com",
+                "Estare publicando mas cosas en mi articulo de esta app pronto!",
+                " Y ya se que esta pestania esta cortando algunas mayusculas, lo corregire pronto ",
+                " Subire este articulo en mi pagina tambien ;)"
+            };
+
+            const char* vibeTextEN[] = {
+                "Hello and greetings to every WiiUCamera user.",
+                "During the testing of this update, I decided to take all the suggestions you sent me",
+                "by email and other means so I could include a part of you in this app.",
+                "However, I noticed that besides your suggestions, there were also some criticisms about",
+                "a rather peculiar topic.",
+                "",
+                "Criticism is constructive for the development of this app and is always welcome.",
+                "But I think I failed to explain myself clearly and a small dispute appeared",
+                "about the supposed excessive use of 100% AI to create this app.",
+                "",
+                "CLARIFICATIONS:",
+                "1. Since the first version of my project, I made it clear that I used Gemini AI to create it.",
+                "It was my first time programming for such a curious environment as the Wii U.",
+                "But there seems to have been a misunderstanding about this:",
+                "- There is little information, or information not simplified enough for general use in my language,",
+                "so I searched for reliable sources and information needed to install the libraries",
+                "required by the compiler to build the app. Since I was lost, I needed AI as",
+                "a source of information and to train myself in a short period of time.",
+                "",
+                "2. Gemini helped me with aesthetic ideas (and also a Discord user named y3ss1n for the current aesthetics).",
+                "Because, honestly, the aesthetics before the first release were horrible.",
+                "It inspired me to improve aspects for your experience, encouraging me to make hand-drawn sketches",
+                "and structure everything block by block.",
+                "Although it is not perfect, I liked the old and current style because it is simple and orderly.",
+                "",
+                "3. Although Gemini collaborated with the source code, I was the one who corrected multiple errors,",
+                "wrote entire syntax sections, looked at other projects for ideas and consulted people who understand the subject.",
+                "I had to learn information I did not even know existed about camera usage, through trial and error",
+                "during many late nights throughout January this year!",
+                "I made most of the boxes and images by hand in a digital editor, composed the menu symphony",
+                "and many other things.",
+                "",
+                "4. It was only support. It helped correct me and gave me quick guidance on how to program an app on Wii U.",
+                "It also helped morally when I had setbacks (once I had so many errors after compiling more than 53 times in one night).",
+                "",
+                "CONCLUSIONS:",
+                "I understand some people's concerns about the use of AI. I understand that without a human soul,",
+                "it can feel like a synthetic and empty app.",
+                "But I assure you that a great part of my dedication, time and emotions are in this project, dedicated",
+                "to each of you and to giving the Wii U camera an extra life.",
+                "",
+                "Therefore, starting with this update, AI use will be minimized and I commit myself to eventually",
+                "stop using it and use 100% of my own programming and structuring abilities and knowledge for this app.",
+                "",
+                "Remember that I will always listen to your suggestions to improve the app.",
+                "And AI will always be your best ally, as long as you do not abuse it.",
+                "",
+                "WiiUCamera will receive more organic updates after this message :)",
+                "",
+                "Sincerely: ClaudiWolf2056",
+                "",
+                "P.S. You can visit my website: www.claudiwolf2056.com",
+                "I will be publishing more things about this app in my article soon!",
+                "And I know this tab is cutting off some capital letters, I'll fix it soon.",
+                "I'll upload this article to my page too ;)"
+            };
+
+            const char** vibeLines = esIngles ? vibeTextEN : vibeTextES;
+            const int vibeCount = esIngles ? (int)(sizeof(vibeTextEN) / sizeof(vibeTextEN[0])) : (int)(sizeof(vibeTextES) / sizeof(vibeTextES[0]));
+
+            const int startY = 215;
+            const int lineSpacing = 28;
+            const int viewH = 450;
+            const int bottomPadding = 220;
+            int contentHeight = vibeCount * lineSpacing;
+            int vibeMaxScroll = contentHeight + bottomPadding - viewH;
+            if (vibeMaxScroll < 0) vibeMaxScroll = 0;
+            if (scrollVibe > vibeMaxScroll) scrollVibe = vibeMaxScroll;
+
+            // Restringir el área de dibujado para que el texto de arriba desaparezca
+            SDL_Rect rClip = {0, 190, 1280, viewH};
+            SDL_RenderSetClipRect(renderer, &rClip);
+
+            for (int i = 0; i < vibeCount; i++) {
+                SDL_Color c = colTexto;
+                if (i == 10 || i == 19 || i == 26 || i == 35) c = colSubtitulo;
+                int y = startY - (int)scrollVibe + (i * lineSpacing);
+                DibujarTextoCentrado(renderer, fuenteMini, vibeLines[i], y, c);
+            }
+
+            // Quitar el recorte antes de dibujar el resto de elementos (Barra espaciadora y UI base)
+            SDL_RenderSetClipRect(renderer, NULL);
+
+            if (vibeMaxScroll > 0) {
+                float pct = scrollVibe / (float)vibeMaxScroll;
+                int barH = (viewH * viewH) / (contentHeight + bottomPadding);
+                if (barH < 35) barH = 35;
+                int barY = 200 + (int)(pct * (viewH - barH));
+                SDL_SetRenderDrawColor(renderer, 50, 50, 50, 255);
+                SDL_Rect bgBar = {1260, 200, 10, viewH};
+                SDL_RenderFillRect(renderer, &bgBar);
+                SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+                SDL_Rect fgBar = {1260, barY, 10, barH};
+                SDL_RenderFillRect(renderer, &fgBar);
+            }
+
+            if (esIngles) DibujarBarraInferiorGlobal(renderer, fuenteMini, "(D-Pad) Scroll", "(B) Back", "");
+            else DibujarBarraInferiorGlobal(renderer, fuenteMini, "(Cruceta) Desplazar", "(B) Atras", "");
+
+            if (delayInput == 0) {
+                if (down) {
+                    scrollVibe += 70;
+                    if (scrollVibe > vibeMaxScroll) scrollVibe = vibeMaxScroll;
+                    delayInput = 2;
+                }
+                if (up) {
+                    scrollVibe -= 70;
+                    if (scrollVibe < 0) scrollVibe = 0;
+                    delayInput = 2;
+                }
+                if (btnB) {
+                    estado = ESTADO_MENU_PRINCIPAL;
+                    seleccion = 8;
+                    scrollVibe = 0;
+                    delayInput = 30;
+                }
+            }
         } else if (estado == ESTADO_INFO_3D) {
              SDL_SetRenderDrawColor(renderer, 20, 20, 30, 255); SDL_RenderClear(renderer); 
              DibujarTextoCentrado(renderer, fuenteGrande, esIngles ? "Image to 3D Guide" : "Guia: Imagen a 3D", 60, colY);
@@ -419,7 +664,7 @@ int main(int argc, char **argv) {
              DibujarTextoCentrado(renderer, fuenteMini, t2, 180, colW); 
              DibujarTextoCentrado(renderer, fuenteMini, t3, 240, {0,255,255,255});
              if (esIngles) DibujarBarraInferiorGlobal(renderer, fuenteMini, "", "(B) Back", ""); else DibujarBarraInferiorGlobal(renderer, fuenteMini, "", "(B) Atras", "");
-             if (btnB && delayInput == 0) { estado = ESTADO_MAS_OPCIONES; seleccion=2; delayInput = 30; }
+             if (btnB && delayInput == 0) { estado = ESTADO_MAS_OPCIONES; seleccion=12; delayInput = 30; }
              
         } else if (estado == ESTADO_INFO_IA) {
              SDL_SetRenderDrawColor(renderer, 20, 20, 30, 255); SDL_RenderClear(renderer); 
@@ -433,15 +678,28 @@ int main(int argc, char **argv) {
              DibujarTextoCentrado(renderer, fuentePequena, t1, 150, colW); 
              DibujarTextoCentrado(renderer, fuenteMini, t2, 210, colW); 
              DibujarTextoCentrado(renderer, fuenteMini, t3, 260, {0,255,255,255});
+             DibujarTextoCentrado(renderer, fuenteMini, t4, 300, {0,255,255,255});
+             
+             if (esIngles) DibujarBarraInferiorGlobal(renderer, fuenteMini, "", "(B) Back", ""); else DibujarBarraInferiorGlobal(renderer, fuenteMini, "", "(B) Atras", "");
+             if (btnB && delayInput == 0) { estado = ESTADO_MAS_OPCIONES; seleccion=13; delayInput = 30; }
+
+        } else if (estado == ESTADO_INFO_PUZZLE) {
+             SDL_SetRenderDrawColor(renderer, 20, 20, 30, 255); SDL_RenderClear(renderer); 
+             DibujarTextoCentrado(renderer, fuenteGrande, esIngles ? "Puzzle Info" : "Guia: Rompecabezas", 60, colY);
+             
+             const char* t1 = esIngles ? "Select any photo to turn it into a jigsaw puzzle!" : "Selecciona cualquier foto para convertirla en un rompecabezas."; 
+             const char* t2 = esIngles ? "Touch one piece, then touch another to swap them." : "Toca una pieza y luego otra para intercambiarlas de lugar."; 
+             const char* t3 = esIngles ? "Try to beat your own time!" : "¡Intenta superar tu propio tiempo record!";
+             
+             DibujarTextoCentrado(renderer, fuentePequena, t1, 150, colW); 
+             DibujarTextoCentrado(renderer, fuenteMini, t2, 210, colW); 
              DibujarTextoCentrado(renderer, fuenteMini, t3, 260, {0,255,255,255});
              
              if (esIngles) DibujarBarraInferiorGlobal(renderer, fuenteMini, "", "(B) Back", ""); else DibujarBarraInferiorGlobal(renderer, fuenteMini, "", "(B) Atras", "");
-             if (btnB && delayInput == 0) { estado = ESTADO_MAS_OPCIONES; seleccion=3; delayInput = 30; }
+             if (btnB && delayInput == 0) { estado = ESTADO_MAS_OPCIONES; seleccion=14; delayInput = 30; }
              
         } else if (estado == ESTADO_SUBMENU_MODOS) {
 
-            
-            // --- DIBUJADO DE CABECERA (Más abajo para no tapar la lente) ---
             SDL_Texture* tHead = esIngles ? texHeadCam_EN : texHeadCam_ES;
             if (tHead) {
                 int w, h; SDL_QueryTexture(tHead, NULL, NULL, &w, &h);
@@ -451,7 +709,6 @@ int main(int argc, char **argv) {
                 DibujarTextoCentrado(renderer, fuenteGrande, esIngles ? "Camera Mode" : "Modo de Camara", 230, colW);
             }
 
-            // --- NUEVO SISTEMA DE BOTONES EN CUADRÍCULA 2x2 ---
             int btnW = 250; int btnH = 100; int gapX = 60; int gapY = 40;
             int startX = (1280 - (btnW * 2 + gapX)) / 2; int startY = 340;
             
@@ -490,22 +747,22 @@ int main(int argc, char **argv) {
         } else if (estado == ESTADO_UPDATES) {
              DibujarTextoCentrado(renderer, fuenteGrande, esIngles ? "Changelog" : "Novedades", 160, colY); int y = 250; int gap = 45; SDL_Color colTxt = colW;
              if(esIngles){ 
-                DibujarTextoCentrado(renderer, fuentePequena, "v1.9.5 - AI UPTADE!", y, colTxt);
-                DibujarTextoCentrado(renderer, fuenteMini, "- NEW: AI UPTADE!", y + gap*1.5, colTxt);
-                DibujarTextoCentrado(renderer, fuenteMini, "- NEW: New effects camera", y + gap*2.5, colTxt);
+                DibujarTextoCentrado(renderer, fuentePequena, "v2.0.0 - Community Update!", y, colTxt);
+                DibujarTextoCentrado(renderer, fuenteMini, "- NEW: Listen to suggestions from the community", y + gap*1.5, colTxt);
+                DibujarTextoCentrado(renderer, fuenteMini, "- NEW: VC Clarification, a New Era and light in camera", y + gap*2.5, colTxt);
                 DibujarTextoCentrado(renderer, fuenteMini, "- Internal improvements", y + gap*3.5, colTxt);
             } else { 
-                DibujarTextoCentrado(renderer, fuentePequena, "v1.9.2 - ACTUALIZACION DE IA", y, colTxt);
-                DibujarTextoCentrado(renderer, fuenteMini, "- NUEVO: Implementacion de IA en esta app", y + gap*1.5, colTxt);
-                DibujarTextoCentrado(renderer, fuenteMini, "- NUEVO: Nuevos efectos locos de camara", y + gap*2.5, colTxt);
+                DibujarTextoCentrado(renderer, fuentePequena, "v2.0.0 - Actualizacion de la comunidad", y, colTxt);
+                DibujarTextoCentrado(renderer, fuenteMini, "- NUEVO: Escucha de sugerencias de la comunidad", y + gap*1.5, colTxt);
+                DibujarTextoCentrado(renderer, fuenteMini, "- NUEVO: Aclaracion de VC, una nueva era y luz", y + gap*2.5, colTxt);
                 DibujarTextoCentrado(renderer, fuenteMini, "- Mejoras internas", y + gap*3.5, colTxt);
             }
              if (esIngles) DibujarBarraInferiorGlobal(renderer, fuenteMini, "", "(B) Back", ""); else DibujarBarraInferiorGlobal(renderer, fuenteMini, "", "(B) Atras", "");
              if (btnB && delayInput == 0) { estado = ESTADO_MENU_PRINCIPAL; delayInput = 30; }
         } else if (estado == ESTADO_AGRADECIMIENTOS) {
-            DibujarTextoCentrado(renderer, fuenteGrande, esIngles ? "Credits" : "Creditos", 160, colY); SDL_Rect clip = { 200, 250, 880, 390 }; SDL_RenderSetClipRect(renderer, &clip);
-            const char* linesEN[] = { "Created by: ClaudiWolf2056", "", "Special Thanks to:", "whateveritwas", "For providing part of his code", "for the exit logic of this app", "You can also find him on Github", "", "Wii U Community (Latam)", "- p-anthoX", "- JEAN_PRETENDO", "- Santix Aldama", "- Downyjarl", "- Keines", "", "Facebook Community:", "Da****, Ro****", "Ce***, and more <3", "", "Technical Help:", "ForTheUsers (4TU)", "My SD Card", "", "Libraries:", "SDL2 for Wii U - devkitPro", "", "See you soon! - ClaudiWolf2056" };
-            const char* linesES[] = { "Creado por: ClaudiWolf2056", "", "Agradecimientos especiales a:", "whateveritwas", "Por brindar una parte de su codigo", "para la logica de cierre de esta app", "Tambien puedes encontrarlo en Github", "", "Comunidad Wii U (Latam)", "- p-anthoX", "- JEAN_PRETENDO", "- Santix Aldama", "- Downyjarl", "- Keines", "", "Comunidad de Facebook:", "Da****, Ro****", "Ce***, y muchos mas <3", "", "Ayuda Tecnica:", "ForTheUsers (4TU)", "Mi tarjeta SD xd", "", "Librerias:", "SDL2 (Wii U) - devkitPro", "", "Gracias por su interes en mi app", ":)", "", "Nos vemos pronto! - ClaudiWolf2056" };
+            DibujarTextoCentrado(renderer, fuenteGrande, esIngles ? "Credits" : "Creditos", 160, colY); SDL_Rect clip = { 50, 250, 1180, 390 }; SDL_RenderSetClipRect(renderer, &clip);
+            const char* linesEN[] = { "Created by: ClaudiWolf2056", "", "Special Thanks to:", "whateveritwas", "For providing part of his code", "for the exit logic of this app", "You can also find him on Github", "", "Wii U Community (Latam)", "- p-anthoX", "- JEAN_PRETENDO", "Bryanks como tester 2.0.0", "- Santix Aldama", "- Downyjarl", "- Keines", "", "Facebook Community:", "Da****, Ro****", "Ce***, and more <3", "", "Technical Help:", "ForTheUsers (4TU)", "My SD Card", "", "Libraries:", "SDL2 for Wii U - devkitPro", "", "See you soon! - ClaudiWolf2056" };
+            const char* linesES[] = { "Creado por: ClaudiWolf2056", "", "Agradecimientos especiales a:", "whateveritwas", "Por brindar una parte de su codigo", "para la logica de cierre de esta app", "Tambien puedes encontrarlo en Github", "", "Comunidad Wii U (Latam)", "- p-anthoX", "- JEAN_PRETENDO", "Bryanks - tester 2.0.0", "- Santix Aldama", "- Downyjarl", "- Keines", "", "Comunidad de Facebook:", "Da****, Ro****", "Ce***, y muchos mas <3", "", "Ayuda Tecnica:", "ForTheUsers (4TU)", "Mi tarjeta SD xd", "", "Librerias:", "SDL2 (Wii U) - devkitPro", "", "Gracias por su interes en mi app", ":)", "", "Nos vemos pronto! - ClaudiWolf2056" };
             int ct = 27; const char** ls = esIngles ? linesEN : linesES;
             for(int i=0; i<ct; i++) { SDL_Surface* s=TTF_RenderText_Blended(fuentePequena, ls[i], colW); if(s){ SDL_Texture* t=SDL_CreateTextureFromSurface(renderer,s); SDL_Rect r={(1280-s->w)/2, (int)(250-scrollY+(i*50)), s->w, s->h}; SDL_RenderCopy(renderer,t,NULL,&r); SDL_FreeSurface(s); SDL_DestroyTexture(t); } }
             SDL_RenderSetClipRect(renderer, NULL); if (down) scrollY += 5; if (up && scrollY > 0) scrollY -= 5;
@@ -581,17 +838,23 @@ int main(int argc, char **argv) {
         if(appRunning) SDL_RenderPresent(renderer);
     }
     
-    
+    // Liberación de recursos
     if(texHeadCam_EN) SDL_DestroyTexture(texHeadCam_EN); if(texHeadCam_ES) SDL_DestroyTexture(texHeadCam_ES);
     if(texBtnPhoto_EN) SDL_DestroyTexture(texBtnPhoto_EN); if(texBtnPhoto_ES) SDL_DestroyTexture(texBtnPhoto_ES);
     if(texBtnVideo_EN) SDL_DestroyTexture(texBtnVideo_EN); if(texBtnVideo_ES) SDL_DestroyTexture(texBtnVideo_ES);
     if(texBtnFx_EN) SDL_DestroyTexture(texBtnFx_EN); if(texBtnFx_ES) SDL_DestroyTexture(texBtnFx_ES);
     if(texBtnMic_EN) SDL_DestroyTexture(texBtnMic_EN); if(texBtnMic_ES) SDL_DestroyTexture(texBtnMic_ES);
 
+    if(tMoreWebcamEN) SDL_DestroyTexture(tMoreWebcamEN); if(tMoreWebcamES) SDL_DestroyTexture(tMoreWebcamES);
+    if(tMoreChromaEN) SDL_DestroyTexture(tMoreChromaEN); if(tMoreChromaES) SDL_DestroyTexture(tMoreChromaES);
+    if(tMore3DEN) SDL_DestroyTexture(tMore3DEN); if(tMore3DES) SDL_DestroyTexture(tMore3DES);
+    if(tMoreAiEN) SDL_DestroyTexture(tMoreAiEN); if(tMoreAiES) SDL_DestroyTexture(tMoreAiES);
+    if(tMorePuzzleEN) SDL_DestroyTexture(tMorePuzzleEN); if(tMorePuzzleES) SDL_DestroyTexture(tMorePuzzleES);
+
     CerrarAudio(); TTF_CloseFont(fuenteGrande); TTF_CloseFont(fuentePequena); TTF_CloseFont(fuenteMini);
     SDL_DestroyTexture(texBg); SDL_DestroyTexture(texStart_ES); SDL_DestroyTexture(texStart_EN); SDL_DestroyTexture(texGal_ES); SDL_DestroyTexture(texGal_EN);
     SDL_DestroyTexture(texEdit_ES); SDL_DestroyTexture(texEdit_EN); SDL_DestroyTexture(texLang_ES); SDL_DestroyTexture(texLang_EN); SDL_DestroyTexture(texMore_ES); SDL_DestroyTexture(texMore_EN);
-    SDL_DestroyTexture(iconUpd); SDL_DestroyTexture(iconCred); SDL_DestroyTexture(iconSet); SDL_DestroyTexture(texQR);
+    SDL_DestroyTexture(iconUpd); SDL_DestroyTexture(iconCred); SDL_DestroyTexture(iconSet); SDL_DestroyTexture(iconVibe); SDL_DestroyTexture(texQR);
     if(texGuide1) SDL_DestroyTexture(texGuide1); if(texGuide2) SDL_DestroyTexture(texGuide2);
     SDL_DestroyRenderer(renderer); SDL_DestroyWindow(window);
     VPADShutdown(); IMG_Quit(); TTF_Quit(); SDL_Quit(); WHBLogConsoleFree(); WHBProcShutdown();
