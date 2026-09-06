@@ -1,4 +1,4 @@
-# 📸 WiiUCamera v1.9.5
+# 📸 WiiUCamera v2.0.0
 
 [English](#english) | [Español](#español)
 
@@ -93,9 +93,9 @@ make
 
 Upon completion, you will get a WiiUCamera.wuhb file ready to use.
 
-📝 Changelog (v1.9.5)
-- NEW: AI Uptade!
-- NEW: New effects camera
+📝 Changelog (v2.0.0)
+- NEW: Listen to suggestions from the community
+- NEW: VC Clarification, a New Era and light in camera
 - DEV FIX: Internal improvements
 
 🤝 Credits and Acknowledgements
@@ -192,9 +192,9 @@ make
 
 Al finalizar, obtendrás el archivo WiiUCamera.wuhb listo para usar.
 
-📝 Registro de cambios (v1.9.5)
-- NUEVO: Actualizacion de IA
-- NUEVO: Nuevos efectos de camara
+📝 Registro de cambios (v2.0.0)
+- NUEVO: Escucha de sugerencias de la comunidad
+- NUEVO: Aclaracion de VC, una nueva era y luz
 - CORRECCIÓN DE DESARROLLO: Mejoras internas.
 
 🤝 Créditos y agradecimientos
